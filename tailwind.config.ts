@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -57,6 +60,22 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Concept colors
+        concept: {
+          ownership: "hsl(var(--ownership))",
+          borrowing: "hsl(var(--borrowing))",
+          lifetimes: "hsl(var(--lifetimes))",
+          concurrency: "hsl(var(--concurrency))",
+          async: "hsl(var(--async))",
+          traits: "hsl(var(--traits))",
+          generics: "hsl(var(--generics))",
+          practice: "hsl(var(--practice))",
+          variables: "hsl(var(--variables))",
+          collection: "hsl(var(--collection))",
+          strings: "hsl(var(--strings))",
+          error: "hsl(var(--error))",
+          robustness: "hsl(var(--robustness))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -65,25 +84,22 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "pulse-soft": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.7" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-soft": "pulse-soft 2s ease-in-out infinite",
       },
     },
   },
