@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Calendar, BarChart3, Settings, Bell, Menu, X } from 'lucide-react';
+import { BookOpen, Calendar, BarChart3, Settings, Bell, Menu, X, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useState } from 'react';
@@ -12,6 +12,7 @@ interface NavbarProps {
 
 const navLinks = [
   { path: '/', label: 'Home', icon: BookOpen },
+  { path: '/lesson', label: 'Lesson', icon: GraduationCap },
   { path: '/curriculum', label: 'Calendar', icon: Calendar },
   { path: '/progress', label: 'Progress', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },
