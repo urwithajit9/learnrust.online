@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Mail, Lock, Loader2 } from 'lucide-react';
+import { BookOpen, Mail, Lock, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +20,7 @@ export default function Auth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
-  const { signIn, signUp, user, isLoading } = useAuth();
+  const { signIn, signUp, user, isLoading, isConfigured } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -85,6 +85,30 @@ export default function Auth() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show configuration error
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-6 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10">
+            <AlertTriangle className="h-8 w-8 text-destructive" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-foreground mb-2">Supabase Not Configured</h1>
+            <p className="text-muted-foreground">
+              Please ensure your Supabase URL and Anon Key are set correctly in the project secrets.
+            </p>
+          </div>
+          <div className="bg-muted/50 p-4 rounded-lg text-left text-sm">
+            <p className="font-medium mb-2">Required secrets:</p>
+            <code className="block text-xs bg-background p-2 rounded">VITE_SUPABASE_URL</code>
+            <code className="block text-xs bg-background p-2 rounded mt-1">VITE_SUPABASE_ANON_KEY</code>
+          </div>
+        </div>
       </div>
     );
   }
