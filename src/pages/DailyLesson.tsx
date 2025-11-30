@@ -1,25 +1,30 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, CheckCircle } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import { LessonView } from '@/components/lesson/LessonView';
 import { Button } from '@/components/ui/button';
-import { useLesson } from '@/hooks/useLesson';
-import { useCompletedItems } from '@/hooks/useLocalStorage';
-import { calculateStats } from '@/utils/stats';
-import { getCurrentDay } from '@/lib/firebase';
+import { useSupabaseLesson } from '@/hooks/useSupabaseLesson';
+import { useUserProgress } from '@/hooks/useUserProgress';
+import { getCurrentDay } from '@/lib/supabase';
+import { useUserSettings } from '@/hooks/useUserSettings';
+
+const TOTAL_DAYS = 121;
 
 const DailyLesson = () => {
   const { day: dayParam } = useParams<{ day?: string }>();
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [completedItems] = useCompletedItems();
+  const { settings } = useUserSettings();
+  const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
   
-  const initialDay = dayParam ? parseInt(dayParam, 10) : getCurrentDay();
+  const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
+  const currentDay = getCurrentDay(startDate);
+  const initialDay = dayParam ? parseInt(dayParam, 10) : currentDay;
   const [selectedDay, setSelectedDay] = useState(initialDay);
   
-  const { lesson, isLoading, error, currentDay } = useLesson(selectedDay);
-  const stats = calculateStats(completedItems);
+  const { lesson, lessonId, isLoading, error } = useSupabaseLesson(selectedDay);
+  const percent = Math.round((completedCount / TOTAL_DAYS) * 100);
 
   const handlePrevDay = () => {
     if (selectedDay > 1) {
@@ -35,10 +40,20 @@ const DailyLesson = () => {
     setSelectedDay(currentDay);
   };
 
+  const handleToggleComplete = async () => {
+    if (!lessonId) return;
+    
+    if (isCompleted(selectedDay)) {
+      await markIncomplete(lessonId);
+    } else {
+      await markComplete(lessonId);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar 
-        progress={stats.percent} 
+        progress={percent} 
         onNotificationClick={() => setNotificationOpen(true)} 
       />
       
@@ -98,11 +113,30 @@ const DailyLesson = () => {
 
         {/* Lesson Content */}
         {lesson && (
-          <LessonView 
-            lesson={lesson} 
-            day={selectedDay}
-            isLoading={isLoading}
-          />
+          <div className="space-y-6">
+            <LessonView 
+              lesson={lesson} 
+              day={selectedDay}
+              isLoading={isLoading}
+            />
+            
+            {lessonId && (
+              <Button
+                onClick={handleToggleComplete}
+                variant={isCompleted(selectedDay) ? 'outline' : 'default'}
+                className="w-full"
+              >
+                {isCompleted(selectedDay) ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Completed - Click to Undo
+                  </>
+                ) : (
+                  'Mark as Completed'
+                )}
+              </Button>
+            )}
+          </div>
         )}
       </main>
     </div>

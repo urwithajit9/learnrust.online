@@ -19,17 +19,24 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useCompletedItems, useNotificationSettings } from '@/hooks/useLocalStorage';
+import { useUserProgress } from '@/hooks/useUserProgress';
 import { curriculumData } from '@/data/curriculum';
-import { calculateStats } from '@/utils/stats';
 import { generateICS } from '@/utils/icsGenerator';
 import { toast } from 'sonner';
+
+const TOTAL_DAYS = 121;
 
 const Settings = () => {
   const [completedItems, setCompletedItems] = useCompletedItems();
   const [notificationSettings, setNotificationSettings] = useNotificationSettings();
+  const { completedCount } = useUserProgress();
   const [notificationModalOpen, setNotificationModalOpen] = useState(false);
   
-  const stats = calculateStats(completedItems);
+  const stats = {
+    total: TOTAL_DAYS,
+    completed: completedCount,
+    percent: Math.round((completedCount / TOTAL_DAYS) * 100),
+  };
 
   const handleExportCalendar = () => {
     generateICS(curriculumData);
