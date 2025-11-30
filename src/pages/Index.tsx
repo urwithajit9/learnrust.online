@@ -1,32 +1,44 @@
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Download, Clock, Target, Zap, BookOpen } from 'lucide-react';
+import { Calendar, Download, Clock, Target, Zap, BookOpen, CalendarDays } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { TodayTask } from '@/components/curriculum/TodayTask';
 import { ProgressChart } from '@/components/charts/ProgressChart';
 import { ConceptDistributionChart } from '@/components/charts/ConceptDistributionChart';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import { Button } from '@/components/ui/button';
-import { useCompletedItems } from '@/hooks/useLocalStorage';
 import { curriculumData, getTodayItem } from '@/data/curriculum';
-import { calculateStats, getConceptDistribution } from '@/utils/stats';
+import { getConceptDistribution } from '@/utils/stats';
 import { generateICS } from '@/utils/icsGenerator';
+import { useUserProgress } from '@/hooks/useUserProgress';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { getCurrentDay } from '@/lib/supabase';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+const TOTAL_DAYS = 121;
+const ESTIMATED_HOURS = 20;
+
 const Index = () => {
   const navigate = useNavigate();
-  const [completedItems, setCompletedItems] = useCompletedItems();
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
+  const { settings } = useUserSettings();
 
+  const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
+  const currentDay = getCurrentDay(startDate);
   const todayItem = getTodayItem();
-  const stats = calculateStats(completedItems);
-  const distribution = getConceptDistribution(curriculumData, completedItems);
 
-  const toggleComplete = (date: string) => {
-    setCompletedItems(prev => 
-      prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
-    );
+  // Calculate stats from Supabase progress
+  const stats = {
+    total: TOTAL_DAYS,
+    completed: completedCount,
+    remaining: TOTAL_DAYS - completedCount,
+    percent: Math.round((completedCount / TOTAL_DAYS) * 100),
+    estimatedHours: ESTIMATED_HOURS,
+    hoursCompleted: Math.round((completedCount / TOTAL_DAYS) * ESTIMATED_HOURS),
   };
+
+  const distribution = getConceptDistribution(curriculumData, []);
 
   const handleExportCalendar = () => {
     generateICS(curriculumData);
@@ -52,7 +64,7 @@ const Index = () => {
         <header className="text-center max-w-2xl mx-auto space-y-4 animate-fade-in">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-2">
             <Zap className="h-4 w-4" />
-            121-Day Learning Journey
+            Day {currentDay} of Your Journey
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground">
             Master Rust in{' '}
@@ -64,9 +76,9 @@ const Index = () => {
             Track your progress, sync with your calendar, and stay consistent.
           </p>
           <div className="flex flex-wrap justify-center gap-3 pt-4">
-            <Button onClick={() => navigate('/curriculum')} size="lg" className="gap-2">
-              <BookOpen className="h-5 w-5" />
-              Start Learning
+            <Button onClick={() => navigate('/calendar')} size="lg" className="gap-2">
+              <CalendarDays className="h-5 w-5" />
+              View Calendar
             </Button>
             <Button 
               variant="outline" 
@@ -84,9 +96,9 @@ const Index = () => {
         <section className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <TodayTask
             item={todayItem}
-            isCompleted={todayItem ? completedItems.includes(todayItem.date) : false}
-            onToggleComplete={toggleComplete}
-            onViewCurriculum={() => navigate('/curriculum')}
+            isCompleted={todayItem ? isCompleted(currentDay) : false}
+            onToggleComplete={() => navigate('/calendar')}
+            onViewCurriculum={() => navigate('/calendar')}
           />
         </section>
 
@@ -153,10 +165,11 @@ const Index = () => {
           <div className="inline-block p-8 rounded-2xl bg-gradient-to-br from-primary/5 via-card to-accent/5 border border-border">
             <h2 className="text-xl font-semibold mb-2">Ready to continue?</h2>
             <p className="text-muted-foreground mb-4">
-              Pick up where you left off or explore the full curriculum.
+              Open the calendar to see your daily lessons and track progress.
             </p>
-            <Button onClick={() => navigate('/curriculum')} className="gap-2">
-              View Full Curriculum
+            <Button onClick={() => navigate('/calendar')} className="gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Open Learning Calendar
             </Button>
           </div>
         </section>

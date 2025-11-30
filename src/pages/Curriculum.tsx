@@ -10,22 +10,25 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCompletedItems } from '@/hooks/useLocalStorage';
+import { useUserProgress } from '@/hooks/useUserProgress';
 import { curriculumData, getTodayItem, phaseInfo } from '@/data/curriculum';
-import { calculateStats } from '@/utils/stats';
 import { searchCurriculum, filterByPhase, filterByConcept } from '@/utils/search';
 import { generateICS } from '@/utils/icsGenerator';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+const TOTAL_DAYS = 121;
+
 const Curriculum = () => {
   const [completedItems, setCompletedItems] = useCompletedItems();
+  const { completedCount } = useUserProgress();
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPhase, setSelectedPhase] = useState('all');
   const [selectedConcept, setSelectedConcept] = useState('all');
 
-  const stats = calculateStats(completedItems);
+  const percent = Math.round((completedCount / TOTAL_DAYS) * 100);
   const todayItem = getTodayItem();
 
   const filteredData = useMemo(() => {
@@ -90,7 +93,7 @@ const Curriculum = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar 
-        progress={stats.percent} 
+        progress={percent} 
         onNotificationClick={() => setNotificationOpen(true)} 
       />
       

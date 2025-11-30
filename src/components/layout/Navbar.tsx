@@ -1,9 +1,10 @@
-import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Calendar, BarChart3, Settings, Bell, Menu, X, GraduationCap } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { BookOpen, Calendar, BarChart3, Settings, Bell, Menu, X, GraduationCap, LogOut, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavbarProps {
   progress: number;
@@ -12,15 +13,23 @@ interface NavbarProps {
 
 const navLinks = [
   { path: '/', label: 'Home', icon: BookOpen },
+  { path: '/calendar', label: 'Calendar', icon: CalendarDays },
   { path: '/lesson', label: 'Lesson', icon: GraduationCap },
-  { path: '/curriculum', label: 'Calendar', icon: Calendar },
+  { path: '/curriculum', label: 'Curriculum', icon: Calendar },
   { path: '/progress', label: 'Progress', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function Navbar({ progress, onNotificationClick }: NavbarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { signOut, user } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-sm">
@@ -76,6 +85,17 @@ export function Navbar({ progress, onNotificationClick }: NavbarProps) {
               <Bell className="h-5 w-5" />
               <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
             </Button>
+
+            {user && (
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={handleSignOut}
+                title="Sign out"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -111,18 +131,31 @@ export function Navbar({ progress, onNotificationClick }: NavbarProps) {
               <div className="h-px bg-border my-2" />
               <div className="flex items-center justify-between px-4 py-2">
                 <span className="text-sm text-muted-foreground">Progress: {progress}%</span>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => {
-                    onNotificationClick();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="gap-2"
-                >
-                  <Bell className="h-4 w-4" />
-                  Alerts
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      onNotificationClick();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="gap-2"
+                  >
+                    <Bell className="h-4 w-4" />
+                    Alerts
+                  </Button>
+                  {user && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleSignOut}
+                      className="gap-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

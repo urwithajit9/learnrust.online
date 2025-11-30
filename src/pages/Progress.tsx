@@ -5,20 +5,32 @@ import { PhaseProgressChart } from '@/components/charts/PhaseProgressChart';
 import { ConceptLegendInline } from '@/components/curriculum/ConceptLegend';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import { Progress } from '@/components/ui/progress';
-import { useCompletedItems } from '@/hooks/useLocalStorage';
 import { curriculumData, phaseInfo } from '@/data/curriculum';
-import { calculateStats, getConceptDistribution, getPhaseProgress } from '@/utils/stats';
+import { getConceptDistribution, getPhaseProgress } from '@/utils/stats';
+import { useUserProgress } from '@/hooks/useUserProgress';
 import { useState } from 'react';
 import { Trophy, Target, Clock, Flame, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const TOTAL_DAYS = 121;
+const ESTIMATED_HOURS = 20;
+
 const ProgressPage = () => {
-  const [completedItems] = useCompletedItems();
+  const { completedCount } = useUserProgress();
   const [notificationOpen, setNotificationOpen] = useState(false);
 
-  const stats = calculateStats(completedItems);
-  const distribution = getConceptDistribution(curriculumData, completedItems);
-  const phaseProgress = getPhaseProgress(completedItems);
+  // Calculate stats from Supabase progress
+  const stats = {
+    total: TOTAL_DAYS,
+    completed: completedCount,
+    remaining: TOTAL_DAYS - completedCount,
+    percent: Math.round((completedCount / TOTAL_DAYS) * 100),
+    estimatedHours: ESTIMATED_HOURS,
+    hoursCompleted: Math.round((completedCount / TOTAL_DAYS) * ESTIMATED_HOURS),
+  };
+
+  const distribution = getConceptDistribution(curriculumData, []);
+  const phaseProgress = getPhaseProgress([]);
 
   return (
     <div className="min-h-screen bg-background">
