@@ -7,11 +7,12 @@ import { lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { Loader2 } from "lucide-react";
-import Index from "./pages/Index";
+import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import StartDateSetup from "./pages/StartDateSetup";
 import NotFound from "./pages/NotFound";
 
+const Index = lazy(() => import("./pages/Index"));
 const Curriculum = lazy(() => import("./pages/Curriculum"));
 const Progress = lazy(() => import("./pages/Progress"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -35,6 +36,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             {/* Public routes */}
+            <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             
             {/* Setup route - requires auth but not start date */}
@@ -44,49 +46,51 @@ const App = () => (
               </ProtectedRoute>
             } />
             
-            {/* Protected routes */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Index />
+            {/* Protected routes - requireStartDate=false allows access without schedule */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute requireStartDate={false}>
+                <Suspense fallback={<LoadingFallback />}>
+                  <Index />
+                </Suspense>
               </ProtectedRoute>
             } />
             <Route path="/curriculum" element={
-              <ProtectedRoute>
+              <ProtectedRoute requireStartDate={false}>
                 <Suspense fallback={<LoadingFallback />}>
                   <Curriculum />
                 </Suspense>
               </ProtectedRoute>
             } />
             <Route path="/progress" element={
-              <ProtectedRoute>
+              <ProtectedRoute requireStartDate={false}>
                 <Suspense fallback={<LoadingFallback />}>
                   <Progress />
                 </Suspense>
               </ProtectedRoute>
             } />
             <Route path="/settings" element={
-              <ProtectedRoute>
+              <ProtectedRoute requireStartDate={false}>
                 <Suspense fallback={<LoadingFallback />}>
                   <Settings />
                 </Suspense>
               </ProtectedRoute>
             } />
             <Route path="/calendar" element={
-              <ProtectedRoute>
+              <ProtectedRoute requireStartDate={true}>
                 <Suspense fallback={<LoadingFallback />}>
                   <CalendarPage />
                 </Suspense>
               </ProtectedRoute>
             } />
             <Route path="/lesson" element={
-              <ProtectedRoute>
+              <ProtectedRoute requireStartDate={true}>
                 <Suspense fallback={<LoadingFallback />}>
                   <DailyLesson />
                 </Suspense>
               </ProtectedRoute>
             } />
             <Route path="/lesson/:day" element={
-              <ProtectedRoute>
+              <ProtectedRoute requireStartDate={true}>
                 <Suspense fallback={<LoadingFallback />}>
                   <DailyLesson />
                 </Suspense>
