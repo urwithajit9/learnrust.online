@@ -1,4 +1,5 @@
-import { CheckCircle, Circle } from 'lucide-react';
+import { CheckCircle, Circle, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { CurriculumItem } from '@/data/curriculum';
 import { getConceptColor } from '@/styles/conceptColors';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,8 @@ interface DayCardProps {
 }
 
 export function DayCard({ item, isCompleted, isToday, onToggleComplete }: DayCardProps) {
+  // Extract day number from the date field (e.g., "Day 1" -> 1)
+  const dayNumber = parseInt(item.date.replace('Day ', ''), 10) || 1;
   const conceptColor = getConceptColor(item.concept);
   const topicParts = item.topic.split(':');
   const title = topicParts[0];
@@ -85,27 +88,39 @@ export function DayCard({ item, isCompleted, isToday, onToggleComplete }: DayCar
         <span className="text-xs text-muted-foreground font-medium">
           Phase {item.phase}
         </span>
-        <Button
-          variant={isCompleted ? 'outline' : 'default'}
-          size="sm"
-          onClick={() => onToggleComplete(item.date)}
-          className={cn(
-            'h-8 text-xs font-semibold transition-all',
-            !isCompleted && 'bg-primary hover:bg-primary/90'
-          )}
-        >
-          {isCompleted ? (
-            <>
-              <Circle className="h-3 w-3 mr-1.5" />
-              Undo
-            </>
-          ) : (
-            <>
-              <CheckCircle className="h-3 w-3 mr-1.5" />
-              Done
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link to={`/lesson/${dayNumber}`}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs font-semibold gap-1"
+            >
+              View
+              <ArrowRight className="h-3 w-3" />
+            </Button>
+          </Link>
+          <Button
+            variant={isCompleted ? 'outline' : 'default'}
+            size="sm"
+            onClick={() => onToggleComplete(item.date)}
+            className={cn(
+              'h-8 text-xs font-semibold transition-all',
+              !isCompleted && 'bg-primary hover:bg-primary/90'
+            )}
+          >
+            {isCompleted ? (
+              <>
+                <Circle className="h-3 w-3 mr-1.5" />
+                Undo
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-3 w-3 mr-1.5" />
+                Done
+              </>
+            )}
+          </Button>
+        </div>
       </footer>
     </article>
   );

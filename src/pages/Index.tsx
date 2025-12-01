@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
-import { Calendar, Download, Clock, Target, Zap, BookOpen, CalendarDays } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Calendar, Download, Clock, Target, Zap, CalendarDays, CalendarPlus, AlertCircle } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { TodayTask } from '@/components/curriculum/TodayTask';
 import { ProgressChart } from '@/components/charts/ProgressChart';
@@ -21,11 +21,12 @@ const ESTIMATED_HOURS = 20;
 const Index = () => {
   const navigate = useNavigate();
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
+  const { completedCount, isCompleted } = useUserProgress();
   const { settings } = useUserSettings();
 
+  const hasSchedule = !!settings?.start_date;
   const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
-  const currentDay = getCurrentDay(startDate);
+  const currentDay = hasSchedule ? getCurrentDay(startDate) : 1;
   const todayItem = getTodayItem();
 
   // Calculate stats from Supabase progress
@@ -60,11 +61,30 @@ const Index = () => {
       />
 
       <main className="container mx-auto px-4 py-8 space-y-10">
+        {/* Schedule Setup Prompt */}
+        {!hasSchedule && (
+          <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-primary" />
+              <div>
+                <p className="font-medium text-foreground">Set your learning schedule</p>
+                <p className="text-sm text-muted-foreground">Personalize your curriculum with a start date</p>
+              </div>
+            </div>
+            <Link to="/setup">
+              <Button className="gap-2">
+                <CalendarPlus className="h-4 w-4" />
+                Set Schedule
+              </Button>
+            </Link>
+          </div>
+        )}
+
         {/* Hero Section */}
         <header className="text-center max-w-2xl mx-auto space-y-4 animate-fade-in">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-2">
             <Zap className="h-4 w-4" />
-            Day {currentDay} of Your Journey
+            {hasSchedule ? `Day ${currentDay} of Your Journey` : 'Start Your Journey'}
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground">
             Master Rust in{' '}
