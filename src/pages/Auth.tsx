@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BookOpen, Mail, Lock, Loader2, AlertTriangle } from 'lucide-react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { BookOpen, Mail, Lock, Loader2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
 
 const authSchema = z.object({
@@ -13,8 +14,17 @@ const authSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+const emailSchema = z.object({
+  email: z.string().email('Please enter a valid email'),
+});
+
+type AuthMode = 'login' | 'signup' | 'forgot';
+
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [searchParams] = useSearchParams();
+  const initialMode = (searchParams.get('mode') as AuthMode) || 'login';
+  
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,13 +36,52 @@ export default function Auth() {
 
   useEffect(() => {
     if (user && !isLoading) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [user, isLoading, navigate]);
+
+  useEffect(() => {
+    const modeParam = searchParams.get('mode') as AuthMode;
+    if (modeParam && ['login', 'signup', 'forgot'].includes(modeParam)) {
+      setMode(modeParam);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+
+    if (mode === 'forgot') {
+      const result = emailSchema.safeParse({ email });
+      if (!result.success) {
+        setErrors({ email: result.error.errors[0]?.message });
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth?mode=login`,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: 'Check your email',
+          description: 'We sent you a password reset link.',
+        });
+        setMode('login');
+      } catch (err: any) {
+        toast({
+          title: 'Error',
+          description: err.message || 'Failed to send reset email.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
 
     const result = authSchema.safeParse({ email, password });
     if (!result.success) {
@@ -48,7 +97,7 @@ export default function Auth() {
     setIsSubmitting(true);
 
     try {
-      const { error } = isLogin 
+      const { error } = mode === 'login' 
         ? await signIn(email, password)
         : await signUp(email, password);
 
@@ -64,7 +113,7 @@ export default function Auth() {
           description: message,
           variant: 'destructive',
         });
-      } else if (!isLogin) {
+      } else if (mode === 'signup') {
         toast({
           title: 'Check your email',
           description: 'We sent you a confirmation link. Please check your inbox.',
@@ -89,7 +138,6 @@ export default function Auth() {
     );
   }
 
-  // Show configuration error
   if (!isConfigured) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -113,9 +161,21 @@ export default function Auth() {
     );
   }
 
+  const titles = {
+    login: { heading: 'Welcome back', subheading: 'Sign in to continue learning' },
+    signup: { heading: 'Create your account', subheading: 'Start your Rust journey today' },
+    forgot: { heading: 'Reset your password', subheading: "We'll send you a reset link" },
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
+        {/* Back to Home */}
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Link>
+
         {/* Logo */}
         <div className="text-center">
           <div className="inline-flex items-center gap-3 mb-4">
@@ -127,10 +187,10 @@ export default function Auth() {
             </span>
           </div>
           <h1 className="text-xl font-semibold text-foreground">
-            {isLogin ? 'Welcome back' : 'Create your account'}
+            {titles[mode].heading}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {isLogin ? 'Sign in to continue learning' : 'Start your Rust journey today'}
+            {titles[mode].subheading}
           </p>
         </div>
 
@@ -152,43 +212,85 @@ export default function Auth() {
             {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
-              />
+          {mode !== 'forgot' && (
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
             </div>
-            {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
-          </div>
+          )}
+
+          {mode === 'login' && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => setMode('forgot')}
+                className="text-sm text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isLogin ? (
+            ) : mode === 'login' ? (
               'Sign In'
-            ) : (
+            ) : mode === 'signup' ? (
               'Create Account'
+            ) : (
+              'Send Reset Link'
             )}
           </Button>
         </form>
 
         {/* Toggle */}
         <p className="text-center text-sm text-muted-foreground">
-          {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-          <button
-            type="button"
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-primary hover:underline font-medium"
-          >
-            {isLogin ? 'Sign up' : 'Sign in'}
-          </button>
+          {mode === 'forgot' ? (
+            <>
+              Remember your password?{' '}
+              <button
+                type="button"
+                onClick={() => setMode('login')}
+                className="text-primary hover:underline font-medium"
+              >
+                Sign in
+              </button>
+            </>
+          ) : mode === 'login' ? (
+            <>
+              Don't have an account?{' '}
+              <button
+                type="button"
+                onClick={() => setMode('signup')}
+                className="text-primary hover:underline font-medium"
+              >
+                Sign up
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{' '}
+              <button
+                type="button"
+                onClick={() => setMode('login')}
+                className="text-primary hover:underline font-medium"
+              >
+                Sign in
+              </button>
+            </>
+          )}
         </p>
       </div>
     </div>
