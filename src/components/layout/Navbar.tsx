@@ -1,34 +1,38 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, Calendar, BarChart3, Settings, Bell, Menu, X, GraduationCap, LogOut, CalendarDays } from 'lucide-react';
+import { BookOpen, Calendar, BarChart3, Settings, Bell, Menu, X, GraduationCap, LogOut, CalendarDays, CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserSettings } from '@/hooks/useUserSettings';
 
 interface NavbarProps {
   progress: number;
   onNotificationClick: () => void;
 }
 
-const navLinks = [
-  { path: '/', label: 'Home', icon: BookOpen },
-  { path: '/calendar', label: 'Calendar', icon: CalendarDays },
-  { path: '/lesson', label: 'Lesson', icon: GraduationCap },
-  { path: '/curriculum', label: 'Curriculum', icon: Calendar },
-  { path: '/progress', label: 'Progress', icon: BarChart3 },
-  { path: '/settings', label: 'Settings', icon: Settings },
-];
-
 export function Navbar({ progress, onNotificationClick }: NavbarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { signOut, user } = useAuth();
+  const { settings } = useUserSettings();
+
+  const hasSchedule = !!settings?.start_date;
+
+  const navLinks = [
+    { path: '/dashboard', label: 'Home', icon: BookOpen },
+    { path: '/calendar', label: 'Calendar', icon: CalendarDays, requiresSchedule: true },
+    { path: '/lesson', label: 'Lesson', icon: GraduationCap, requiresSchedule: true },
+    { path: '/curriculum', label: 'Curriculum', icon: Calendar },
+    { path: '/progress', label: 'Progress', icon: BarChart3 },
+    { path: '/settings', label: 'Settings', icon: Settings },
+  ];
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/auth');
+    navigate('/');
   };
 
   return (
@@ -36,7 +40,7 @@ export function Navbar({ progress, onNotificationClick }: NavbarProps) {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link to="/dashboard" className="flex items-center gap-3 group">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
               <BookOpen className="h-5 w-5" />
             </div>
@@ -47,14 +51,15 @@ export function Navbar({ progress, onNotificationClick }: NavbarProps) {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
-            {navLinks.map(({ path, label, icon: Icon }) => (
+            {navLinks.map(({ path, label, icon: Icon, requiresSchedule }) => (
               <Link key={path} to={path}>
                 <Button
                   variant={location.pathname === path ? 'secondary' : 'ghost'}
                   size="sm"
                   className={cn(
                     'gap-2',
-                    location.pathname === path && 'bg-secondary text-secondary-foreground'
+                    location.pathname === path && 'bg-secondary text-secondary-foreground',
+                    requiresSchedule && !hasSchedule && 'opacity-60'
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -62,6 +67,16 @@ export function Navbar({ progress, onNotificationClick }: NavbarProps) {
                 </Button>
               </Link>
             ))}
+            
+            {/* Set Schedule button if no schedule */}
+            {!hasSchedule && (
+              <Link to="/setup">
+                <Button variant="outline" size="sm" className="gap-2 border-primary text-primary">
+                  <CalendarPlus className="h-4 w-4" />
+                  Set Schedule
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Right Section */}
@@ -113,7 +128,7 @@ export function Navbar({ progress, onNotificationClick }: NavbarProps) {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border animate-fade-in">
             <div className="flex flex-col gap-2">
-              {navLinks.map(({ path, label, icon: Icon }) => (
+              {navLinks.map(({ path, label, icon: Icon, requiresSchedule }) => (
                 <Link 
                   key={path} 
                   to={path}
@@ -121,13 +136,26 @@ export function Navbar({ progress, onNotificationClick }: NavbarProps) {
                 >
                   <Button
                     variant={location.pathname === path ? 'secondary' : 'ghost'}
-                    className="w-full justify-start gap-3"
+                    className={cn(
+                      'w-full justify-start gap-3',
+                      requiresSchedule && !hasSchedule && 'opacity-60'
+                    )}
                   >
                     <Icon className="h-4 w-4" />
                     {label}
                   </Button>
                 </Link>
               ))}
+              
+              {!hasSchedule && (
+                <Link to="/setup" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full justify-start gap-3 border-primary text-primary">
+                    <CalendarPlus className="h-4 w-4" />
+                    Set Schedule
+                  </Button>
+                </Link>
+              )}
+              
               <div className="h-px bg-border my-2" />
               <div className="flex items-center justify-between px-4 py-2">
                 <span className="text-sm text-muted-foreground">Progress: {progress}%</span>

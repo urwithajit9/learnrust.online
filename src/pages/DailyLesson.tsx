@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar, CheckCircle } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Calendar, CheckCircle, Flag } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { NotificationModal } from '@/components/modals/NotificationModal';
+import { LessonReportModal } from '@/components/modals/LessonReportModal';
 import { LessonView } from '@/components/lesson/LessonView';
 import { Button } from '@/components/ui/button';
 import { useSupabaseLesson } from '@/hooks/useSupabaseLesson';
@@ -15,6 +16,7 @@ const TOTAL_DAYS = 121;
 const DailyLesson = () => {
   const { day: dayParam } = useParams<{ day?: string }>();
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const { settings } = useUserSettings();
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
   
@@ -60,6 +62,14 @@ const DailyLesson = () => {
       <NotificationModal 
         isOpen={notificationOpen} 
         onClose={() => setNotificationOpen(false)} 
+      />
+
+      <LessonReportModal
+        isOpen={reportOpen}
+        onClose={() => setReportOpen(false)}
+        lessonId={lessonId}
+        lessonTitle={lesson?.title || 'Unknown'}
+        dayNumber={selectedDay}
       />
 
       <main className="container mx-auto px-4 py-8 max-w-4xl">
@@ -120,22 +130,44 @@ const DailyLesson = () => {
               isLoading={isLoading}
             />
             
-            {lessonId && (
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {lessonId && (
+                <Button
+                  onClick={handleToggleComplete}
+                  variant={isCompleted(selectedDay) ? 'outline' : 'default'}
+                  className="flex-1"
+                >
+                  {isCompleted(selectedDay) ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Completed - Click to Undo
+                    </>
+                  ) : (
+                    'Mark as Completed'
+                  )}
+                </Button>
+              )}
+              
               <Button
-                onClick={handleToggleComplete}
-                variant={isCompleted(selectedDay) ? 'outline' : 'default'}
-                className="w-full"
+                variant="outline"
+                onClick={() => setReportOpen(true)}
+                className="gap-2"
               >
-                {isCompleted(selectedDay) ? (
-                  <>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Completed - Click to Undo
-                  </>
-                ) : (
-                  'Mark as Completed'
-                )}
+                <Flag className="h-4 w-4" />
+                Report / Suggest
               </Button>
-            )}
+            </div>
+
+            {/* Navigation Links */}
+            <div className="flex justify-center gap-4 pt-4 border-t border-border">
+              <Link to="/curriculum" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                View Curriculum
+              </Link>
+              <Link to="/calendar" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                View Calendar
+              </Link>
+            </div>
           </div>
         )}
       </main>
