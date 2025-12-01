@@ -1,0 +1,49 @@
+name: Sync from Dev Repo
+
+on:
+  workflow_dispatch:  # manual trigger only
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Production Repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Add Dev Repo as Remote
+        run: |
+          git remote add dev https://github.com/ajitkumar2026/rust-study-hub.git
+          git fetch dev
+
+      - name: Create Sync Branch
+        run: |
+          git checkout -B sync-from-dev
+          git pull dev/main --allow-unrelated-histories --no-edit || true
+
+      - name: Resolve Conflicts by Accepting Dev Version
+        run: |
+          git checkout --theirs .
+          git add .
+
+      - name: Commit Changes if Any
+        run: |
+          git commit -m "Auto-sync from dev repo" || echo "No changes to commit"
+
+      - name: Push Sync Branch
+        uses: ad-m/github-push-action@v0.8.0
+        with:
+          branch: sync-from-dev
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: sync-from-dev
+          title: "Sync: Update production from dev repo"
+          body: "This PR automatically syncs the production repository with the latest changes from the dev repository."
+          base: main
