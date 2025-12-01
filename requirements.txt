@@ -1,0 +1,6 @@
+# Python dependencies for your Agentic AI (FastAPI, LangChain, etc.)
+fastapi
+uvicorn
+langchain # Example AI framework
+google-genai # Example LLM client
+supabase-py # Example DB client
