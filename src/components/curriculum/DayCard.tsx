@@ -18,6 +18,7 @@ export function DayCard({ item, isCompleted, isToday, onToggleComplete }: DayCar
   const topicParts = item.topic.split(':');
   const title = topicParts[0];
   const description = topicParts.slice(1).join(':').trim();
+  const lessonSlug = item.topicSlug || `day-${dayIndex}`;
 
   return (
     <article
@@ -88,7 +89,7 @@ export function DayCard({ item, isCompleted, isToday, onToggleComplete }: DayCar
           Phase {item.phase}
         </span>
         <div className="flex items-center gap-2">
-          <Link to={`/lesson/${dayIndex}`}>
+          <Link to={`/lesson/${lessonSlug}`}>
             <Button
               variant="ghost"
               size="sm"

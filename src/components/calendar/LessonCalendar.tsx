@@ -303,7 +303,7 @@ export function LessonCalendar() {
               {selectedLesson && selectedDay && (
                 <SocialShare 
                   lessonTitle={selectedLesson.title}
-                  lessonDay={selectedDay}
+                  lessonSlug={getCurriculumItemByDayIndex(selectedDay)?.topicSlug || ''}
                 />
               )}
               

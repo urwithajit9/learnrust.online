@@ -89,7 +89,7 @@ const App = () => (
                 </Suspense>
               </ProtectedRoute>
             } />
-            <Route path="/lesson/:day" element={
+            <Route path="/lesson/:slug" element={
               <ProtectedRoute requireStartDate={true}>
                 <Suspense fallback={<LoadingFallback />}>
                   <DailyLesson />

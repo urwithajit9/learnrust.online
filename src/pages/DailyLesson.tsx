@@ -1,21 +1,26 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Calendar, CheckCircle, Flag } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import { LessonReportModal } from '@/components/modals/LessonReportModal';
 import { LessonView } from '@/components/lesson/LessonView';
 import { SocialShare } from '@/components/lesson/SocialShare';
+import { LessonResources } from '@/components/lesson/LessonResources';
+import { LessonNotes } from '@/components/lesson/LessonNotes';
 import { Button } from '@/components/ui/button';
 import { useSupabaseLesson } from '@/hooks/useSupabaseLesson';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { getCurrentDay } from '@/lib/supabase';
 import { useUserSettings } from '@/hooks/useUserSettings';
+import { getCurriculumItemByDayIndex, getDayIndexBySlug } from '@/utils/curriculumHelpers';
+import { curriculumData } from '@/data/curriculum';
 
 const TOTAL_DAYS = 121;
 
 const DailyLesson = () => {
-  const { day: dayParam } = useParams<{ day?: string }>();
+  const { slug } = useParams<{ slug?: string }>();
+  const navigate = useNavigate();
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const { settings } = useUserSettings();
@@ -23,26 +28,52 @@ const DailyLesson = () => {
   
   const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
   const currentDay = getCurrentDay(startDate);
-  const initialDay = dayParam ? parseInt(dayParam, 10) : currentDay;
-  const [selectedDay, setSelectedDay] = useState(initialDay);
   
-  const { lesson, lessonId, isLoading, error } = useSupabaseLesson(selectedDay);
+  // Determine selected day from slug or use current day
+  const [selectedDay, setSelectedDay] = useState(() => {
+    if (slug) {
+      const dayIndex = getDayIndexBySlug(slug);
+      return dayIndex || currentDay;
+    }
+    return currentDay;
+  });
+  
+  const { lesson, lessonId, isLoading, error } = useSupabaseLesson(slug || selectedDay);
   const percent = Math.round((completedCount / TOTAL_DAYS) * 100);
+
+  // Update selected day when slug changes
+  useEffect(() => {
+    if (slug) {
+      const dayIndex = getDayIndexBySlug(slug);
+      if (dayIndex) {
+        setSelectedDay(dayIndex);
+      }
+    }
+  }, [slug]);
 
   const handlePrevDay = () => {
     if (selectedDay > 1) {
-      setSelectedDay(prev => prev - 1);
+      const prevItem = getCurriculumItemByDayIndex(selectedDay - 1);
+      if (prevItem?.topicSlug) {
+        navigate(`/lesson/${prevItem.topicSlug}`);
+      }
     }
   };
 
   const handleNextDay = () => {
     if (selectedDay < TOTAL_DAYS) {
-      setSelectedDay(prev => prev + 1);
+      const nextItem = getCurriculumItemByDayIndex(selectedDay + 1);
+      if (nextItem?.topicSlug) {
+        navigate(`/lesson/${nextItem.topicSlug}`);
+      }
     }
   };
 
   const handleToday = () => {
-    setSelectedDay(currentDay);
+    const todayItem = getCurriculumItemByDayIndex(currentDay);
+    if (todayItem?.topicSlug) {
+      navigate(`/lesson/${todayItem.topicSlug}`);
+    }
   };
 
   const handleToggleComplete = async () => {
@@ -137,8 +168,14 @@ const DailyLesson = () => {
             {/* Social Share */}
             <SocialShare 
               lessonTitle={lesson.title}
-              lessonDay={selectedDay}
+              lessonSlug={curriculumData[selectedDay - 1]?.topicSlug || ''}
             />
+            
+            {/* Learning Resources */}
+            <LessonResources lessonId={lessonId} />
+            
+            {/* User Notes */}
+            <LessonNotes lessonId={lessonId} />
             
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
