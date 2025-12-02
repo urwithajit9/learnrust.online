@@ -1,6 +1,6 @@
 import { CheckCircle, Circle, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { CurriculumItem } from '@/data/curriculum';
+import { CurriculumItem, curriculumData } from '@/data/curriculum';
 import { getConceptColor } from '@/styles/conceptColors';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -13,8 +13,7 @@ interface DayCardProps {
 }
 
 export function DayCard({ item, isCompleted, isToday, onToggleComplete }: DayCardProps) {
-  // Extract day number from the date field (e.g., "Day 1" -> 1)
-  const dayNumber = parseInt(item.date.replace('Day ', ''), 10) || 1;
+  const dayIndex = item.dayIndex || curriculumData.findIndex(i => i.date === item.date) + 1;
   const conceptColor = getConceptColor(item.concept);
   const topicParts = item.topic.split(':');
   const title = topicParts[0];
@@ -89,7 +88,7 @@ export function DayCard({ item, isCompleted, isToday, onToggleComplete }: DayCar
           Phase {item.phase}
         </span>
         <div className="flex items-center gap-2">
-          <Link to={`/lesson/${dayNumber}`}>
+          <Link to={`/lesson/${dayIndex}`}>
             <Button
               variant="ghost"
               size="sm"
