@@ -4,6 +4,7 @@ export interface CurriculumItem {
   topic: string;
   concept: string;
   phase: number;
+  dayIndex?: number; // Optional: calculated day index
 }
 
 export const curriculumData: CurriculumItem[] = [
@@ -133,8 +134,7 @@ export const curriculumData: CurriculumItem[] = [
   { date: "Mar 28", day: "Sat", topic: "Project Focus: Write integration tests.", concept: "Testing", phase: 4 },
   { date: "Mar 29", day: "Sun", topic: "Review: Final review of Ownership rules.", concept: "Review", phase: 4 },
   { date: "Mar 30", day: "Mon", topic: "Final: Look for a beginner project on GitHub.", concept: "Next Steps", phase: 4 },
-  { date: "Mar 31", day: "Tue", topic: "Final: Research the Rust Roadmap for 2026.", concept: "Next Steps", phase: 4 },
-];
+].slice(0, 121); // Enforce 121-day limit
 
 export const phaseInfo = {
   1: { name: "Foundations", description: "Variables, Types, Ownership & Borrowing", color: "bg-primary" },

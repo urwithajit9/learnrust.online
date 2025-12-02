@@ -5,6 +5,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import { LessonReportModal } from '@/components/modals/LessonReportModal';
 import { LessonView } from '@/components/lesson/LessonView';
+import { SocialShare } from '@/components/lesson/SocialShare';
 import { Button } from '@/components/ui/button';
 import { useSupabaseLesson } from '@/hooks/useSupabaseLesson';
 import { useUserProgress } from '@/hooks/useUserProgress';
@@ -35,7 +36,9 @@ const DailyLesson = () => {
   };
 
   const handleNextDay = () => {
-    setSelectedDay(prev => prev + 1);
+    if (selectedDay < TOTAL_DAYS) {
+      setSelectedDay(prev => prev + 1);
+    }
   };
 
   const handleToday = () => {
@@ -107,6 +110,7 @@ const DailyLesson = () => {
             variant="outline"
             size="sm"
             onClick={handleNextDay}
+            disabled={selectedDay >= TOTAL_DAYS}
             className="gap-2"
           >
             <span className="hidden sm:inline">Next</span>
@@ -128,6 +132,12 @@ const DailyLesson = () => {
               lesson={lesson} 
               day={selectedDay}
               isLoading={isLoading}
+            />
+            
+            {/* Social Share */}
+            <SocialShare 
+              lessonTitle={lesson.title}
+              lessonDay={selectedDay}
             />
             
             {/* Action Buttons */}
