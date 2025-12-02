@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, Download, SlidersHorizontal } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
@@ -9,19 +9,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useCompletedItems } from '@/hooks/useLocalStorage';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { curriculumData, getTodayItem, phaseInfo } from '@/data/curriculum';
 import { searchCurriculum, filterByPhase, filterByConcept } from '@/utils/search';
 import { generateICS } from '@/utils/icsGenerator';
+import { getDayIndexByDate } from '@/utils/curriculumHelpers';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const TOTAL_DAYS = 121;
 
 const Curriculum = () => {
-  const [completedItems, setCompletedItems] = useCompletedItems();
-  const { completedCount } = useUserProgress();
+  const { user } = useAuth();
+  const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,18 +33,53 @@ const Curriculum = () => {
   const percent = Math.round((completedCount / TOTAL_DAYS) * 100);
   const todayItem = getTodayItem();
 
-  const filteredData = useMemo(() => {
-    let result = curriculumData;
-    result = searchCurriculum(result, searchQuery);
-    result = filterByPhase(result, selectedPhase);
-    result = filterByConcept(result, selectedConcept);
-    return result;
-  }, [searchQuery, selectedPhase, selectedConcept]);
+  // Add dayIndex to curriculum items
+  const enrichedCurriculumData = curriculumData.map((item, index) => ({
+    ...item,
+    dayIndex: index + 1
+  })) as Array<typeof curriculumData[0] & { dayIndex: number }>;
 
-  const toggleComplete = (date: string) => {
-    setCompletedItems(prev => 
-      prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
-    );
+  const filteredData = useMemo(() => {
+    let result = enrichedCurriculumData;
+    result = searchCurriculum(result as any, searchQuery) as typeof enrichedCurriculumData;
+    result = filterByPhase(result as any, selectedPhase) as typeof enrichedCurriculumData;
+    result = filterByConcept(result as any, selectedConcept) as typeof enrichedCurriculumData;
+    return result;
+  }, [searchQuery, selectedPhase, selectedConcept, enrichedCurriculumData]);
+
+  const toggleComplete = async (date: string) => {
+    if (!user) {
+      toast.error('Please log in to track your progress');
+      return;
+    }
+
+    const dayIndex = getDayIndexByDate(date);
+    if (!dayIndex) return;
+
+    try {
+      // Find the lesson ID for this day
+      const { data: lessonData } = await supabase
+        .from('lessons')
+        .select('id')
+        .eq('day_index', dayIndex)
+        .maybeSingle();
+
+      if (!lessonData) {
+        toast.error('Lesson not found');
+        return;
+      }
+
+      if (isCompleted(dayIndex)) {
+        await markIncomplete(lessonData.id);
+        toast.success('Progress updated');
+      } else {
+        await markComplete(lessonData.id);
+        toast.success('Lesson marked as completed!');
+      }
+    } catch (error) {
+      console.error('Error toggling completion:', error);
+      toast.error('Failed to update progress');
+    }
   };
 
   const handleExportCalendar = () => {
@@ -123,7 +160,7 @@ const Curriculum = () => {
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Daily Roadmap</h1>
                 <p className="text-sm text-muted-foreground">
-                  {filteredData.length} lessons • {completedItems.length} completed
+                  {filteredData.length} lessons • {completedCount} completed
                 </p>
               </div>
               
@@ -189,7 +226,7 @@ const Curriculum = () => {
                   <DayCard
                     key={item.date}
                     item={item}
-                    isCompleted={completedItems.includes(item.date)}
+                    isCompleted={isCompleted(item.dayIndex)}
                     isToday={todayItem?.date === item.date}
                     onToggleComplete={toggleComplete}
                   />
