@@ -1,11 +1,15 @@
 name: Sync from Dev Repo
 
 on:
-  workflow_dispatch:  # manual trigger only
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+
+    env:
+      DEV_REPO: "ajitkumar2026/rust-study-hub"
+      TOKEN: ${{ secrets.DEV_REPO_TOKEN }}  # <-- your PAT
 
     steps:
       - name: Checkout Production Repo
@@ -14,9 +18,15 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Add Dev Repo as Remote
+      - name: Configure Git Identity
         run: |
-          git remote add dev https://github.com/ajitkumar2026/rust-study-hub.git
+          git config user.name "GitHub Actions Bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add Dev Repo as Remote (using PAT)
+        run: |
+          git remote remove dev 2>/dev/null || true
+          git remote add dev https://x-access-token:${TOKEN}@github.com/${DEV_REPO}.git
           git fetch dev
 
       - name: Create Sync Branch
@@ -36,8 +46,9 @@ jobs:
       - name: Push Sync Branch
         uses: ad-m/github-push-action@v0.8.0
         with:
+          github_token: ${{ secrets.PROD_REPO_TOKEN }}
           branch: sync-from-dev
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
@@ -45,5 +56,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: sync-from-dev
           title: "Sync: Update production from dev repo"
-          body: "This PR automatically syncs the production repository with the latest changes from the dev repository."
+          body: "This PR syncs the production repo with latest dev changes."
           base: main
