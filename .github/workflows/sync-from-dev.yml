@@ -27,7 +27,7 @@ jobs:
         run: |
           git remote remove dev 2>/dev/null || true
           git remote add dev https://x-access-token:${TOKEN}@github.com/${DEV_REPO}.git
-          git fetch dev --depth=0
+          git fetch dev
 
       - name: Create Sync Branch
         run: |
