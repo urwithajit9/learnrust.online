@@ -35,7 +35,7 @@ function transformToLessonData(row: SupabaseLessonRow): DailyLesson {
   };
 }
 
-export function useSupabaseLesson(dayOverride?: number) {
+export function useSupabaseLesson(slugOrDay?: string | number) {
   const { settings } = useUserSettings();
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [lessonId, setLessonId] = useState<string | null>(null);
@@ -44,7 +44,7 @@ export function useSupabaseLesson(dayOverride?: number) {
   const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
-  const currentDay = dayOverride ?? getCurrentDay(startDate);
+  const currentDay = typeof slugOrDay === 'number' ? slugOrDay : getCurrentDay(startDate);
 
   useEffect(() => {
     async function fetchLesson() {
@@ -52,11 +52,16 @@ export function useSupabaseLesson(dayOverride?: number) {
       setError(null);
 
       try {
-        const { data, error: fetchError } = await supabase
-          .from('lessons')
-          .select('*')
-          .eq('day_index', currentDay)
-          .maybeSingle();
+        let query = supabase.from('lessons').select('*');
+        
+        // Fetch by slug if provided, otherwise by day_index
+        if (typeof slugOrDay === 'string') {
+          query = query.eq('topic_slug', slugOrDay);
+        } else {
+          query = query.eq('day_index', currentDay);
+        }
+
+        const { data, error: fetchError } = await query.maybeSingle();
 
         if (fetchError) {
           throw fetchError;
@@ -83,7 +88,7 @@ export function useSupabaseLesson(dayOverride?: number) {
     }
 
     fetchLesson();
-  }, [currentDay, refetchTrigger]);
+  }, [slugOrDay, currentDay, refetchTrigger]);
 
   const refetch = () => setRefetchTrigger(prev => prev + 1);
 

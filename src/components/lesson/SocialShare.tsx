@@ -3,11 +3,11 @@ import { Button } from '@/components/ui/button';
 
 interface SocialShareProps {
   lessonTitle: string;
-  lessonDay: number;
+  lessonSlug: string;
 }
 
-export function SocialShare({ lessonTitle, lessonDay }: SocialShareProps) {
-  const lessonUrl = `${window.location.origin}/lesson/${lessonDay}`;
+export function SocialShare({ lessonTitle, lessonSlug }: SocialShareProps) {
+  const lessonUrl = `${window.location.origin}/lesson/${lessonSlug}`;
   
   const shareOnTwitter = () => {
     const text = `Learning Rust with this lesson: ${lessonTitle}. Check it out! @OnlineLearnRust`;
