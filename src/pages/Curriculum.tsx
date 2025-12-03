@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Search, Filter, Download, SlidersHorizontal } from 'lucide-react';
+// Updated Curriculum page with consistent content logic
+import { useState, useMemo } from 'react';
+import { Search, Download, SlidersHorizontal, Eye, EyeOff } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { DayCard } from '@/components/curriculum/DayCard';
@@ -7,9 +8,11 @@ import { ConceptLegend } from '@/components/curriculum/ConceptLegend';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUserProgress } from '@/hooks/useUserProgress';
+import { useLessonAccess } from '@/hooks/useLessonAccess';
 import { curriculumData, getTodayItem, phaseInfo } from '@/data/curriculum';
 import { searchCurriculum, filterByPhase, filterByConcept } from '@/utils/search';
 import { generateICS } from '@/utils/icsGenerator';
@@ -24,6 +27,7 @@ const TOTAL_DAYS = 121;
 const Curriculum = () => {
   const { user } = useAuth();
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
+  const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked } = useLessonAccess();
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -178,6 +182,23 @@ const Curriculum = () => {
                   </SheetContent>
                 </Sheet>
 
+                {/* Future lessons toggle */}
+                <div className="hidden sm:flex items-center gap-2 p-2 rounded-lg bg-secondary/50 border border-border">
+                  {allowFutureLessons ? (
+                    <Eye className="h-4 w-4 text-primary" />
+                  ) : (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <Label htmlFor="future-toggle-curriculum" className="text-xs cursor-pointer">
+                    Future
+                  </Label>
+                  <Switch
+                    id="future-toggle-curriculum"
+                    checked={allowFutureLessons}
+                    onCheckedChange={setAllowFutureLessons}
+                  />
+                </div>
+
                 <ConceptLegend />
                 
                 <Button 
@@ -228,6 +249,7 @@ const Curriculum = () => {
                     item={item}
                     isCompleted={isCompleted(item.dayIndex)}
                     isToday={todayItem?.date === item.date}
+                    isLocked={isLessonLocked(item.dayIndex)}
                     onToggleComplete={toggleComplete}
                   />
                 ))}

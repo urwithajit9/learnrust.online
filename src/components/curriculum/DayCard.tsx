@@ -1,18 +1,21 @@
-import { CheckCircle, Circle, ArrowRight } from 'lucide-react';
+// Updated DayCard with locked state support
+import { CheckCircle, Circle, ArrowRight, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CurriculumItem, curriculumData } from '@/data/curriculum';
 import { getConceptColor } from '@/styles/conceptColors';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface DayCardProps {
   item: CurriculumItem;
   isCompleted: boolean;
   isToday?: boolean;
+  isLocked?: boolean;
   onToggleComplete: (date: string) => void;
 }
 
-export function DayCard({ item, isCompleted, isToday, onToggleComplete }: DayCardProps) {
+export function DayCard({ item, isCompleted, isToday, isLocked = false, onToggleComplete }: DayCardProps) {
   const dayIndex = item.dayIndex || curriculumData.findIndex(i => i.date === item.date) + 1;
   const conceptColor = getConceptColor(item.concept);
   const topicParts = item.topic.split(':');
@@ -24,22 +27,31 @@ export function DayCard({ item, isCompleted, isToday, onToggleComplete }: DayCar
     <article
       className={cn(
         'relative p-5 rounded-xl border transition-all duration-300 flex flex-col h-full group',
-        isCompleted 
-          ? 'bg-muted/50 border-border opacity-75' 
-          : isToday
-            ? 'bg-primary/5 border-primary/30 shadow-glow'
-            : 'bg-card border-border shadow-card hover:shadow-lg hover:-translate-y-0.5'
+        isLocked
+          ? 'bg-muted/30 border-border opacity-60'
+          : isCompleted 
+            ? 'bg-muted/50 border-border opacity-75' 
+            : isToday
+              ? 'bg-primary/5 border-primary/30 shadow-glow'
+              : 'bg-card border-border shadow-card hover:shadow-lg hover:-translate-y-0.5'
       )}
     >
+      {/* Locked indicator */}
+      {isLocked && (
+        <div className="absolute top-4 right-4 text-muted-foreground">
+          <Lock className="h-5 w-5" />
+        </div>
+      )}
+
       {/* Today indicator */}
-      {isToday && !isCompleted && (
+      {isToday && !isCompleted && !isLocked && (
         <div className="absolute -top-2 left-4 px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider rounded-full animate-pulse-soft">
           Today
         </div>
       )}
 
       {/* Completed indicator */}
-      {isCompleted && (
+      {isCompleted && !isLocked && (
         <div className="absolute top-4 right-4 text-primary animate-scale-in">
           <CheckCircle className="h-6 w-6 fill-primary/10" />
         </div>
@@ -55,7 +67,7 @@ export function DayCard({ item, isCompleted, isToday, onToggleComplete }: DayCar
             {item.day}
           </span>
         </div>
-        {!isCompleted && (
+        {!isCompleted && !isLocked && (
           <span className={cn(
             'text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full text-primary-foreground',
             conceptColor.bg
@@ -69,14 +81,14 @@ export function DayCard({ item, isCompleted, isToday, onToggleComplete }: DayCar
       <div className="flex-grow">
         <h3 className={cn(
           'font-semibold mb-1 leading-snug',
-          isCompleted ? 'text-muted-foreground line-through' : 'text-foreground'
+          isLocked ? 'text-muted-foreground' : isCompleted ? 'text-muted-foreground line-through' : 'text-foreground'
         )}>
           {title}
         </h3>
         {description && (
           <p className={cn(
             'text-sm leading-relaxed',
-            isCompleted ? 'text-muted-foreground/70' : 'text-muted-foreground'
+            isCompleted || isLocked ? 'text-muted-foreground/70' : 'text-muted-foreground'
           )}>
             {description}
           </p>
@@ -89,37 +101,58 @@ export function DayCard({ item, isCompleted, isToday, onToggleComplete }: DayCar
           Phase {item.phase}
         </span>
         <div className="flex items-center gap-2">
-          <Link to={`/lesson/${lessonSlug}`}>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs font-semibold gap-1"
-            >
-              View
-              <ArrowRight className="h-3 w-3" />
-            </Button>
-          </Link>
-          <Button
-            variant={isCompleted ? 'outline' : 'default'}
-            size="sm"
-            onClick={() => onToggleComplete(item.date)}
-            className={cn(
-              'h-8 text-xs font-semibold transition-all',
-              !isCompleted && 'bg-primary hover:bg-primary/90'
-            )}
-          >
-            {isCompleted ? (
-              <>
-                <Circle className="h-3 w-3 mr-1.5" />
-                Undo
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-3 w-3 mr-1.5" />
-                Done
-              </>
-            )}
-          </Button>
+          {isLocked ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled
+                  className="h-8 text-xs font-semibold gap-1 cursor-not-allowed"
+                >
+                  <Lock className="h-3 w-3 mr-1" />
+                  Locked
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Lesson coming soon - unlocked when you reach this day</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <>
+              <Link to={`/lesson/${lessonSlug}`}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs font-semibold gap-1"
+                >
+                  View
+                  <ArrowRight className="h-3 w-3" />
+                </Button>
+              </Link>
+              <Button
+                variant={isCompleted ? 'outline' : 'default'}
+                size="sm"
+                onClick={() => onToggleComplete(item.date)}
+                className={cn(
+                  'h-8 text-xs font-semibold transition-all',
+                  !isCompleted && 'bg-primary hover:bg-primary/90'
+                )}
+              >
+                {isCompleted ? (
+                  <>
+                    <Circle className="h-3 w-3 mr-1.5" />
+                    Undo
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-3 w-3 mr-1.5" />
+                    Done
+                  </>
+                )}
+              </Button>
+            </>
+          )}
         </div>
       </footer>
     </article>
