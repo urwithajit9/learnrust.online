@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, Calendar, BarChart3, Settings, Bell, Menu, X, GraduationCap, LogOut, CalendarDays, CalendarPlus } from 'lucide-react';
+import { BookOpen, Calendar, BarChart3, Settings, Bell, Menu, X, GraduationCap, LogOut, CalendarDays, CalendarPlus, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useState } from 'react';
@@ -27,6 +27,7 @@ export function Navbar({ progress, onNotificationClick }: NavbarProps) {
     { path: '/lesson', label: 'Lesson', icon: GraduationCap, requiresSchedule: true },
     { path: '/curriculum', label: 'Curriculum', icon: Calendar },
     { path: '/progress', label: 'Progress', icon: BarChart3 },
+    { path: '/notes', label: 'Notes', icon: StickyNote },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
 
