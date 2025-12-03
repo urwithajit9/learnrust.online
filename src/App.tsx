@@ -18,6 +18,7 @@ const Progress = lazy(() => import("./pages/Progress"));
 const Settings = lazy(() => import("./pages/Settings"));
 const DailyLesson = lazy(() => import("./pages/DailyLesson"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const AllNotes = lazy(() => import("./pages/AllNotes"));
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,13 @@ const App = () => (
               <ProtectedRoute requireStartDate={true}>
                 <Suspense fallback={<LoadingFallback />}>
                   <DailyLesson />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="/notes" element={
+              <ProtectedRoute requireStartDate={false}>
+                <Suspense fallback={<LoadingFallback />}>
+                  <AllNotes />
                 </Suspense>
               </ProtectedRoute>
             } />

@@ -1,13 +1,19 @@
+// Updated LessonCalendar with consistent content logic and resource/notes sections
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle, Circle, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Circle, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useUserProgress } from '@/hooks/useUserProgress';
+import { useLessonAccess } from '@/hooks/useLessonAccess';
 import { supabase, getCurrentDay } from '@/lib/supabase';
 import { LessonView } from '@/components/lesson/LessonView';
 import { SocialShare } from '@/components/lesson/SocialShare';
+import { LessonResources } from '@/components/lesson/LessonResources';
+import { LessonNotes } from '@/components/lesson/LessonNotes';
 import { DailyLesson, LessonData, LessonPlaceholder } from '@/types/lesson';
 import { getSampleLesson } from '@/data/sampleLesson';
 import { getCurriculumItemByDayIndex } from '@/utils/curriculumHelpers';
@@ -30,6 +36,7 @@ type ViewMode = 'paginated' | 'phase' | 'all';
 export function LessonCalendar() {
   const { settings } = useUserSettings();
   const { isCompleted, markComplete, markIncomplete } = useUserProgress();
+  const { currentDay, allowFutureLessons, setAllowFutureLessons, canAccessLesson, isLessonLocked } = useLessonAccess();
   const [viewMode, setViewMode] = useState<ViewMode>('paginated');
   const [page, setPage] = useState(0);
   const [selectedPhase, setSelectedPhase] = useState(1);
@@ -39,7 +46,6 @@ export function LessonCalendar() {
   const [isLoadingLesson, setIsLoadingLesson] = useState(false);
 
   const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
-  const currentDay = getCurrentDay(startDate);
 
   const getCalendarDays = (): CalendarDay[] => {
     const days: CalendarDay[] = [];
@@ -122,6 +128,10 @@ export function LessonCalendar() {
   };
 
   const handleDayClick = (dayIndex: number) => {
+    // Check if lesson is accessible based on current day setting
+    if (!canAccessLesson(dayIndex)) {
+      return; // Don't open locked lessons
+    }
     setSelectedDay(dayIndex);
     fetchLesson(dayIndex);
   };
@@ -162,8 +172,25 @@ export function LessonCalendar() {
           </p>
         </div>
         
-        {/* View Mode Switcher */}
+        {/* View Mode Switcher and Settings */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          {/* Future lessons toggle */}
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50 border border-border">
+            {allowFutureLessons ? (
+              <Eye className="h-4 w-4 text-primary" />
+            ) : (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+            )}
+            <Label htmlFor="future-toggle" className="text-xs cursor-pointer">
+              Future
+            </Label>
+            <Switch
+              id="future-toggle"
+              checked={allowFutureLessons}
+              onCheckedChange={setAllowFutureLessons}
+            />
+          </div>
+          
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
             <TabsList>
               <TabsTrigger value="paginated">Paginated</TabsTrigger>
@@ -217,18 +244,22 @@ export function LessonCalendar() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {calendarDays.map((day) => {
           const completed = isCompleted(day.dayIndex);
+          const locked = isLessonLocked(day.dayIndex);
           const formattedDate = day.date.toISOString().split('T')[0];
           
           return (
             <button
               key={day.dayIndex}
               onClick={() => handleDayClick(day.dayIndex)}
+              disabled={locked}
               className={cn(
                 'relative p-4 rounded-lg border transition-all text-left',
-                'hover:border-primary hover:shadow-md hover:scale-[1.02]',
-                day.isToday && 'ring-2 ring-primary ring-offset-2',
+                locked 
+                  ? 'opacity-50 cursor-not-allowed bg-muted border-border'
+                  : 'hover:border-primary hover:shadow-md hover:scale-[1.02]',
+                day.isToday && !locked && 'ring-2 ring-primary ring-offset-2',
                 completed && 'bg-primary/5 border-primary/30',
-                !day.isToday && !completed && 'bg-card border-border'
+                !day.isToday && !completed && !locked && 'bg-card border-border'
               )}
             >
               <div className="flex items-start justify-between gap-2">
@@ -249,7 +280,9 @@ export function LessonCalendar() {
                   </p>
                 </div>
                 <div className="flex-shrink-0">
-                  {completed ? (
+                  {locked ? (
+                    <Lock className="h-5 w-5 text-muted-foreground" />
+                  ) : completed ? (
                     <CheckCircle className="h-5 w-5 text-primary fill-primary/20" />
                   ) : (
                     <Circle className="h-5 w-5 text-muted-foreground" />
@@ -300,6 +333,7 @@ export function LessonCalendar() {
                 isLoading={false}
               />
               
+              {/* Social Share */}
               {selectedLesson && selectedDay && (
                 <SocialShare 
                   lessonTitle={selectedLesson.title}
@@ -307,6 +341,13 @@ export function LessonCalendar() {
                 />
               )}
               
+              {/* Learning Resources - now included in calendar modal */}
+              <LessonResources lessonId={selectedLessonId} />
+              
+              {/* User Notes - now included in calendar modal */}
+              <LessonNotes lessonId={selectedLessonId} />
+              
+              {/* Completion Button */}
               {selectedLessonId && selectedDay && (
                 <Button
                   onClick={handleToggleComplete}
