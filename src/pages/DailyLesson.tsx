@@ -1,6 +1,7 @@
+// Updated DailyLesson page with database-driven curriculum sync
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar, CheckCircle, Flag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, CheckCircle, Flag, Lock, Eye, EyeOff } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import { LessonReportModal } from '@/components/modals/LessonReportModal';
@@ -9,12 +10,13 @@ import { SocialShare } from '@/components/lesson/SocialShare';
 import { LessonResources } from '@/components/lesson/LessonResources';
 import { LessonNotes } from '@/components/lesson/LessonNotes';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import { useSupabaseLesson } from '@/hooks/useSupabaseLesson';
 import { useUserProgress } from '@/hooks/useUserProgress';
-import { getCurrentDay } from '@/lib/supabase';
-import { useUserSettings } from '@/hooks/useUserSettings';
-import { getCurriculumItemByDayIndex, getDayIndexBySlug } from '@/utils/curriculumHelpers';
-import { curriculumData } from '@/data/curriculum';
+import { useLessonAccess } from '@/hooks/useLessonAccess';
+import { useCurriculum } from '@/hooks/useCurriculum';
 
 const TOTAL_DAYS = 121;
 
@@ -23,37 +25,38 @@ const DailyLesson = () => {
   const navigate = useNavigate();
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const { settings } = useUserSettings();
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
-  
-  const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
-  const currentDay = getCurrentDay(startDate);
+  const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked, canAccessLesson } = useLessonAccess();
+  const { curriculum, getItemByDayIndex, getItemBySlug } = useCurriculum();
   
   // Determine selected day from slug or use current day
   const [selectedDay, setSelectedDay] = useState(() => {
     if (slug) {
-      const dayIndex = getDayIndexBySlug(slug);
-      return dayIndex || currentDay;
+      const item = getItemBySlug(slug);
+      return item?.dayIndex || currentDay;
     }
     return currentDay;
   });
   
   const { lesson, lessonId, isLoading, error } = useSupabaseLesson(slug || selectedDay);
   const percent = Math.round((completedCount / TOTAL_DAYS) * 100);
+  
+  // Get current curriculum item
+  const currentItem = getItemByDayIndex(selectedDay);
 
   // Update selected day when slug changes
   useEffect(() => {
     if (slug) {
-      const dayIndex = getDayIndexBySlug(slug);
-      if (dayIndex) {
-        setSelectedDay(dayIndex);
+      const item = getItemBySlug(slug);
+      if (item) {
+        setSelectedDay(item.dayIndex);
       }
     }
-  }, [slug]);
+  }, [slug, getItemBySlug]);
 
   const handlePrevDay = () => {
     if (selectedDay > 1) {
-      const prevItem = getCurriculumItemByDayIndex(selectedDay - 1);
+      const prevItem = getItemByDayIndex(selectedDay - 1);
       if (prevItem?.topicSlug) {
         navigate(`/lesson/${prevItem.topicSlug}`);
       }
@@ -61,8 +64,8 @@ const DailyLesson = () => {
   };
 
   const handleNextDay = () => {
-    if (selectedDay < TOTAL_DAYS) {
-      const nextItem = getCurriculumItemByDayIndex(selectedDay + 1);
+    if (selectedDay < TOTAL_DAYS && canAccessLesson(selectedDay + 1)) {
+      const nextItem = getItemByDayIndex(selectedDay + 1);
       if (nextItem?.topicSlug) {
         navigate(`/lesson/${nextItem.topicSlug}`);
       }
@@ -70,7 +73,7 @@ const DailyLesson = () => {
   };
 
   const handleToday = () => {
-    const todayItem = getCurriculumItemByDayIndex(currentDay);
+    const todayItem = getItemByDayIndex(currentDay);
     if (todayItem?.topicSlug) {
       navigate(`/lesson/${todayItem.topicSlug}`);
     }
@@ -135,13 +138,31 @@ const DailyLesson = () => {
                 <span className="hidden sm:inline">Today</span>
               </Button>
             )}
+            
+            {/* Future lessons toggle */}
+            <div className="hidden sm:flex items-center gap-2 p-2 rounded-lg bg-secondary/50 border border-border ml-2">
+              {allowFutureLessons ? (
+                <Eye className="h-3 w-3 text-primary" />
+              ) : (
+                <EyeOff className="h-3 w-3 text-muted-foreground" />
+              )}
+              <Label htmlFor="future-toggle-lesson" className="text-[10px] cursor-pointer">
+                Future
+              </Label>
+              <Switch
+                id="future-toggle-lesson"
+                checked={allowFutureLessons}
+                onCheckedChange={setAllowFutureLessons}
+                className="scale-75"
+              />
+            </div>
           </div>
           
           <Button
             variant="outline"
             size="sm"
             onClick={handleNextDay}
-            disabled={selectedDay >= TOTAL_DAYS}
+            disabled={selectedDay >= TOTAL_DAYS || !canAccessLesson(selectedDay + 1)}
             className="gap-2"
           >
             <span className="hidden sm:inline">Next</span>
@@ -156,8 +177,40 @@ const DailyLesson = () => {
           </div>
         )}
 
+        {/* Locked Lesson Display */}
+        {isLessonLocked(selectedDay) && (
+          <Card className="mb-6">
+            <CardContent className="py-12 text-center">
+              <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="font-semibold text-foreground mb-2">Lesson Locked</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                This lesson will be available when you reach Day {selectedDay}.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Enable "Future" toggle above to preview upcoming lessons.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Placeholder Display */}
+        {currentItem && !currentItem.hasContent && !isLessonLocked(selectedDay) && (
+          <Card className="mb-6">
+            <CardContent className="py-12 text-center">
+              <div className="text-4xl mb-4">🚧</div>
+              <h3 className="font-semibold text-foreground mb-2">Coming Soon</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                The content for this lesson is being prepared.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Check back later for the full lesson content.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Lesson Content */}
-        {lesson && (
+        {lesson && !isLessonLocked(selectedDay) && (
           <div className="space-y-6">
             <LessonView 
               lesson={lesson} 
@@ -168,7 +221,7 @@ const DailyLesson = () => {
             {/* Social Share */}
             <SocialShare 
               lessonTitle={lesson.title}
-              lessonSlug={curriculumData[selectedDay - 1]?.topicSlug || ''}
+              lessonSlug={currentItem?.topicSlug || ''}
             />
             
             {/* Learning Resources */}

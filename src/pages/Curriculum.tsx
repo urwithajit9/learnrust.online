@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Search, Filter, Download, SlidersHorizontal } from 'lucide-react';
+// Updated Curriculum page with database-driven curriculum
+import { useState, useMemo } from 'react';
+import { Search, Download, SlidersHorizontal, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { DayCard } from '@/components/curriculum/DayCard';
@@ -7,13 +8,14 @@ import { ConceptLegend } from '@/components/curriculum/ConceptLegend';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUserProgress } from '@/hooks/useUserProgress';
-import { curriculumData, getTodayItem, phaseInfo } from '@/data/curriculum';
+import { useLessonAccess } from '@/hooks/useLessonAccess';
+import { useCurriculum, phaseInfo } from '@/hooks/useCurriculum';
 import { searchCurriculum, filterByPhase, filterByConcept } from '@/utils/search';
 import { generateICS } from '@/utils/icsGenerator';
-import { getDayIndexByDate } from '@/utils/curriculumHelpers';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -24,6 +26,9 @@ const TOTAL_DAYS = 121;
 const Curriculum = () => {
   const { user } = useAuth();
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
+  const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked } = useLessonAccess();
+  const { curriculum, isLoading: isCurriculumLoading, error: curriculumError } = useCurriculum();
+  
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,33 +36,45 @@ const Curriculum = () => {
   const [selectedConcept, setSelectedConcept] = useState('all');
 
   const percent = Math.round((completedCount / TOTAL_DAYS) * 100);
-  const todayItem = getTodayItem();
 
-  // Add dayIndex to curriculum items
-  const enrichedCurriculumData = curriculumData.map((item, index) => ({
-    ...item,
-    dayIndex: index + 1
-  })) as Array<typeof curriculumData[0] & { dayIndex: number }>;
-
+  // Filter curriculum data using generic search functions
   const filteredData = useMemo(() => {
-    let result = enrichedCurriculumData;
-    result = searchCurriculum(result as any, searchQuery) as typeof enrichedCurriculumData;
-    result = filterByPhase(result as any, selectedPhase) as typeof enrichedCurriculumData;
-    result = filterByConcept(result as any, selectedConcept) as typeof enrichedCurriculumData;
+    let result = curriculum;
+    result = searchCurriculum(result, searchQuery);
+    result = filterByPhase(result, selectedPhase);
+    result = filterByConcept(result, selectedConcept);
     return result;
-  }, [searchQuery, selectedPhase, selectedConcept, enrichedCurriculumData]);
+  }, [searchQuery, selectedPhase, selectedConcept, curriculum]);
 
-  const toggleComplete = async (date: string) => {
+  // Toggle completion using dayIndex
+  const toggleComplete = async (date: string, dayIndex: number) => {
     if (!user) {
       toast.error('Please log in to track your progress');
       return;
     }
 
-    const dayIndex = getDayIndexByDate(date);
-    if (!dayIndex) return;
+    const curriculumItem = curriculum.find(c => c.dayIndex === dayIndex);
+    if (!curriculumItem) return;
 
+    // If item has lessonId from DB, use it directly
+    if (curriculumItem.lessonId) {
+      try {
+        if (isCompleted(dayIndex)) {
+          await markIncomplete(curriculumItem.lessonId);
+          toast.success('Progress updated');
+        } else {
+          await markComplete(curriculumItem.lessonId);
+          toast.success('Lesson marked as completed!');
+        }
+      } catch (error) {
+        console.error('Error toggling completion:', error);
+        toast.error('Failed to update progress');
+      }
+      return;
+    }
+
+    // Fallback: Query DB for lesson ID
     try {
-      // Find the lesson ID for this day
       const { data: lessonData } = await supabase
         .from('lessons')
         .select('id')
@@ -65,7 +82,7 @@ const Curriculum = () => {
         .maybeSingle();
 
       if (!lessonData) {
-        toast.error('Lesson not found');
+        toast.error('Lesson not available yet');
         return;
       }
 
@@ -83,7 +100,15 @@ const Curriculum = () => {
   };
 
   const handleExportCalendar = () => {
-    generateICS(curriculumData);
+    // Convert enriched curriculum back to format expected by ICS generator
+    const exportData = curriculum.map(item => ({
+      date: item.date,
+      day: item.day,
+      topic: item.topic,
+      concept: item.concept,
+      phase: item.phase,
+    }));
+    generateICS(exportData);
     toast.success('Calendar exported!', {
       description: 'The .ics file has been downloaded.',
     });
@@ -178,6 +203,23 @@ const Curriculum = () => {
                   </SheetContent>
                 </Sheet>
 
+                {/* Future lessons toggle */}
+                <div className="hidden sm:flex items-center gap-2 p-2 rounded-lg bg-secondary/50 border border-border">
+                  {allowFutureLessons ? (
+                    <Eye className="h-4 w-4 text-primary" />
+                  ) : (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <Label htmlFor="future-toggle-curriculum" className="text-xs cursor-pointer">
+                    Future
+                  </Label>
+                  <Switch
+                    id="future-toggle-curriculum"
+                    checked={allowFutureLessons}
+                    onCheckedChange={setAllowFutureLessons}
+                  />
+                </div>
+
                 <ConceptLegend />
                 
                 <Button 
@@ -219,15 +261,26 @@ const Curriculum = () => {
               ))}
             </div>
 
-            {/* Grid */}
-            {filteredData.length > 0 ? (
+            {/* Loading State */}
+            {isCurriculumLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : curriculumError ? (
+              <div className="text-center py-20 rounded-2xl border border-dashed border-destructive bg-destructive/10">
+                <div className="text-4xl mb-4">⚠️</div>
+                <h3 className="text-lg font-semibold text-destructive mb-1">Error Loading Curriculum</h3>
+                <p className="text-muted-foreground text-sm">{curriculumError}</p>
+              </div>
+            ) : filteredData.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredData.map((item) => (
                   <DayCard
-                    key={item.date}
+                    key={item.dayIndex}
                     item={item}
                     isCompleted={isCompleted(item.dayIndex)}
-                    isToday={todayItem?.date === item.date}
+                    isToday={item.dayIndex === currentDay}
+                    isLocked={isLessonLocked(item.dayIndex)}
                     onToggleComplete={toggleComplete}
                   />
                 ))}

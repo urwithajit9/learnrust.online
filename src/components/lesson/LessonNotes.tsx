@@ -1,5 +1,7 @@
+// LessonNotes component with link to view all notes
 import { useEffect, useState } from 'react';
-import { Save, Edit2, Trash2, StickyNote } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Save, Edit2, Trash2, StickyNote, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -158,11 +160,20 @@ export function LessonNotes({ lessonId }: LessonNotesProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <StickyNote className="h-5 w-5" />
-          My Notes
-        </CardTitle>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <StickyNote className="h-5 w-5" />
+            My Notes
+          </CardTitle>
+          {/* Link to view all notes */}
+          <Button variant="ghost" size="sm" asChild className="h-7 text-xs gap-1">
+            <Link to="/notes">
+              View All
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {isEditing ? (
