@@ -1,6 +1,6 @@
-// Updated LessonCalendar with consistent content logic and resource/notes sections
+// Updated LessonCalendar with database-driven curriculum sync
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle, Circle, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Circle, Loader2, Lock, Eye, EyeOff, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { useLessonAccess } from '@/hooks/useLessonAccess';
+import { useCurriculum } from '@/hooks/useCurriculum';
 import { supabase, getCurrentDay } from '@/lib/supabase';
 import { LessonView } from '@/components/lesson/LessonView';
 import { SocialShare } from '@/components/lesson/SocialShare';
@@ -16,17 +17,7 @@ import { LessonResources } from '@/components/lesson/LessonResources';
 import { LessonNotes } from '@/components/lesson/LessonNotes';
 import { DailyLesson, LessonData, LessonPlaceholder } from '@/types/lesson';
 import { getSampleLesson } from '@/data/sampleLesson';
-import { getCurriculumItemByDayIndex } from '@/utils/curriculumHelpers';
 import { cn } from '@/lib/utils';
-
-interface CalendarDay {
-  dayIndex: number;
-  date: Date;
-  topic: string;
-  isToday: boolean;
-  isPast: boolean;
-  isFuture: boolean;
-}
 
 const TOTAL_DAYS = 121;
 const DAYS_PER_PAGE = 30;
@@ -37,6 +28,8 @@ export function LessonCalendar() {
   const { settings } = useUserSettings();
   const { isCompleted, markComplete, markIncomplete } = useUserProgress();
   const { currentDay, allowFutureLessons, setAllowFutureLessons, canAccessLesson, isLessonLocked } = useLessonAccess();
+  const { curriculum, isLoading: isCurriculumLoading, getItemByDayIndex } = useCurriculum();
+  
   const [viewMode, setViewMode] = useState<ViewMode>('paginated');
   const [page, setPage] = useState(0);
   const [selectedPhase, setSelectedPhase] = useState(1);
@@ -47,8 +40,8 @@ export function LessonCalendar() {
 
   const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
 
-  const getCalendarDays = (): CalendarDay[] => {
-    const days: CalendarDay[] = [];
+  // Get calendar days based on view mode
+  const getCalendarDays = () => {
     let startDayIndex = 1;
     let endDayIndex = TOTAL_DAYS;
 
@@ -56,28 +49,25 @@ export function LessonCalendar() {
       startDayIndex = page * DAYS_PER_PAGE + 1;
       endDayIndex = Math.min(startDayIndex + DAYS_PER_PAGE - 1, TOTAL_DAYS);
     } else if (viewMode === 'phase') {
-      // Phase 1: days 1-31, Phase 2: days 32-62, Phase 3: days 63-93, Phase 4: days 94-121
       const phaseStarts = [1, 32, 63, 94];
       const phaseEnds = [31, 62, 93, 121];
       startDayIndex = phaseStarts[selectedPhase - 1];
       endDayIndex = phaseEnds[selectedPhase - 1];
     }
-    
-    for (let dayIndex = startDayIndex; dayIndex <= endDayIndex; dayIndex++) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + dayIndex - 1);
-      const curriculumItem = getCurriculumItemByDayIndex(dayIndex);
-      
-      days.push({
-        dayIndex,
-        date,
-        topic: curriculumItem?.topic || 'Lesson content',
-        isToday: dayIndex === currentDay,
-        isPast: dayIndex < currentDay,
-        isFuture: dayIndex > currentDay,
+
+    return curriculum
+      .filter(item => item.dayIndex >= startDayIndex && item.dayIndex <= endDayIndex)
+      .map(item => {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + item.dayIndex - 1);
+        return {
+          ...item,
+          date,
+          isToday: item.dayIndex === currentDay,
+          isPast: item.dayIndex < currentDay,
+          isFuture: item.dayIndex > currentDay,
+        };
       });
-    }
-    return days;
   };
 
   const calendarDays = getCalendarDays();
@@ -106,10 +96,11 @@ export function LessonCalendar() {
         setSelectedLesson(lesson);
         setSelectedLessonId(data.id);
       } else {
+        // Check for sample lesson or show placeholder
         const sampleLesson = getSampleLesson(dayIndex);
         setSelectedLesson(sampleLesson || {
-          title: 'Content Coming Soon...',
-          theory: 'Check back tomorrow! New lessons are added daily.',
+          title: 'Coming Soon',
+          theory: 'Lesson content is being prepared. Check back later!',
           isPlaceholder: true,
         } as LessonPlaceholder);
         setSelectedLessonId(null);
@@ -128,9 +119,8 @@ export function LessonCalendar() {
   };
 
   const handleDayClick = (dayIndex: number) => {
-    // Check if lesson is accessible based on current day setting
     if (!canAccessLesson(dayIndex)) {
-      return; // Don't open locked lessons
+      return;
     }
     setSelectedDay(dayIndex);
     fetchLesson(dayIndex);
@@ -145,7 +135,7 @@ export function LessonCalendar() {
   const handleNavigate = (direction: 'prev' | 'next') => {
     if (!selectedDay) return;
     const newDay = direction === 'prev' ? selectedDay - 1 : selectedDay + 1;
-    if (newDay >= 1 && newDay <= TOTAL_DAYS) {
+    if (newDay >= 1 && newDay <= TOTAL_DAYS && canAccessLesson(newDay)) {
       setSelectedDay(newDay);
       fetchLesson(newDay);
     }
@@ -160,6 +150,14 @@ export function LessonCalendar() {
       await markComplete(selectedLessonId);
     }
   };
+
+  if (isCurriculumLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -246,6 +244,7 @@ export function LessonCalendar() {
           const completed = isCompleted(day.dayIndex);
           const locked = isLessonLocked(day.dayIndex);
           const formattedDate = day.date.toISOString().split('T')[0];
+          const isPlaceholder = !day.hasContent;
           
           return (
             <button
@@ -256,12 +255,21 @@ export function LessonCalendar() {
                 'relative p-4 rounded-lg border transition-all text-left',
                 locked 
                   ? 'opacity-50 cursor-not-allowed bg-muted border-border'
-                  : 'hover:border-primary hover:shadow-md hover:scale-[1.02]',
+                  : isPlaceholder
+                    ? 'bg-muted/20 border-dashed border-border/50 hover:border-primary/50'
+                    : 'hover:border-primary hover:shadow-md hover:scale-[1.02]',
                 day.isToday && !locked && 'ring-2 ring-primary ring-offset-2',
-                completed && 'bg-primary/5 border-primary/30',
-                !day.isToday && !completed && !locked && 'bg-card border-border'
+                completed && !isPlaceholder && 'bg-primary/5 border-primary/30',
+                !day.isToday && !completed && !locked && !isPlaceholder && 'bg-card border-border'
               )}
             >
+              {/* Placeholder badge */}
+              {isPlaceholder && !locked && (
+                <div className="absolute -top-2 left-2 px-1.5 py-0.5 bg-muted text-muted-foreground text-[9px] font-bold uppercase rounded">
+                  Coming Soon
+                </div>
+              )}
+              
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -275,17 +283,28 @@ export function LessonCalendar() {
                       {formattedDate}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {day.topic}
+                  <p className={cn(
+                    'text-xs line-clamp-2',
+                    isPlaceholder ? 'text-muted-foreground/70 italic' : 'text-muted-foreground'
+                  )}>
+                    {isPlaceholder ? 'Content coming soon...' : day.topic}
                   </p>
+                  {/* Estimated time */}
+                  <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground/70">
+                    <Clock className="h-3 w-3" />
+                    <span>{day.estimatedTimeMinutes} min</span>
+                  </div>
                 </div>
                 <div className="flex-shrink-0">
                   {locked ? (
                     <Lock className="h-5 w-5 text-muted-foreground" />
-                  ) : completed ? (
+                  ) : completed && !isPlaceholder ? (
                     <CheckCircle className="h-5 w-5 text-primary fill-primary/20" />
                   ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground" />
+                    <Circle className={cn(
+                      'h-5 w-5',
+                      isPlaceholder ? 'text-muted-foreground/50' : 'text-muted-foreground'
+                    )} />
                   )}
                 </div>
               </div>
@@ -305,7 +324,7 @@ export function LessonCalendar() {
                   variant="ghost"
                   size="icon"
                   onClick={() => handleNavigate('prev')}
-                  disabled={selectedDay === 1}
+                  disabled={selectedDay === 1 || !canAccessLesson((selectedDay || 1) - 1)}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -313,7 +332,7 @@ export function LessonCalendar() {
                   variant="ghost"
                   size="icon"
                   onClick={() => handleNavigate('next')}
-                  disabled={selectedDay === TOTAL_DAYS}
+                  disabled={selectedDay === TOTAL_DAYS || !canAccessLesson((selectedDay || TOTAL_DAYS) + 1)}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -337,14 +356,14 @@ export function LessonCalendar() {
               {selectedLesson && selectedDay && (
                 <SocialShare 
                   lessonTitle={selectedLesson.title}
-                  lessonSlug={getCurriculumItemByDayIndex(selectedDay)?.topicSlug || ''}
+                  lessonSlug={getItemByDayIndex(selectedDay)?.topicSlug || ''}
                 />
               )}
               
-              {/* Learning Resources - now included in calendar modal */}
+              {/* Learning Resources */}
               <LessonResources lessonId={selectedLessonId} />
               
-              {/* User Notes - now included in calendar modal */}
+              {/* User Notes */}
               <LessonNotes lessonId={selectedLessonId} />
               
               {/* Completion Button */}
