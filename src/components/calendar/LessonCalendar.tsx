@@ -1,6 +1,6 @@
-// Updated LessonCalendar with database-driven curriculum sync
+// Updated LessonCalendar with consistent content logic and resource/notes sections
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle, Circle, Loader2, Lock, Eye, EyeOff, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Circle, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { useLessonAccess } from '@/hooks/useLessonAccess';
-import { useCurriculum } from '@/hooks/useCurriculum';
 import { supabase, getCurrentDay } from '@/lib/supabase';
 import { LessonView } from '@/components/lesson/LessonView';
 import { SocialShare } from '@/components/lesson/SocialShare';
@@ -28,8 +27,6 @@ export function LessonCalendar() {
   const { settings } = useUserSettings();
   const { isCompleted, markComplete, markIncomplete } = useUserProgress();
   const { currentDay, allowFutureLessons, setAllowFutureLessons, canAccessLesson, isLessonLocked } = useLessonAccess();
-  const { curriculum, isLoading: isCurriculumLoading, getItemByDayIndex } = useCurriculum();
-  
   const [viewMode, setViewMode] = useState<ViewMode>('paginated');
   const [page, setPage] = useState(0);
   const [selectedPhase, setSelectedPhase] = useState(1);
@@ -119,8 +116,9 @@ export function LessonCalendar() {
   };
 
   const handleDayClick = (dayIndex: number) => {
+    // Check if lesson is accessible based on current day setting
     if (!canAccessLesson(dayIndex)) {
-      return;
+      return; // Don't open locked lessons
     }
     setSelectedDay(dayIndex);
     fetchLesson(dayIndex);
@@ -255,12 +253,10 @@ export function LessonCalendar() {
                 'relative p-4 rounded-lg border transition-all text-left',
                 locked 
                   ? 'opacity-50 cursor-not-allowed bg-muted border-border'
-                  : isPlaceholder
-                    ? 'bg-muted/20 border-dashed border-border/50 hover:border-primary/50'
-                    : 'hover:border-primary hover:shadow-md hover:scale-[1.02]',
+                  : 'hover:border-primary hover:shadow-md hover:scale-[1.02]',
                 day.isToday && !locked && 'ring-2 ring-primary ring-offset-2',
-                completed && !isPlaceholder && 'bg-primary/5 border-primary/30',
-                !day.isToday && !completed && !locked && !isPlaceholder && 'bg-card border-border'
+                completed && 'bg-primary/5 border-primary/30',
+                !day.isToday && !completed && !locked && 'bg-card border-border'
               )}
             >
               {/* Placeholder badge */}
@@ -298,7 +294,7 @@ export function LessonCalendar() {
                 <div className="flex-shrink-0">
                   {locked ? (
                     <Lock className="h-5 w-5 text-muted-foreground" />
-                  ) : completed && !isPlaceholder ? (
+                  ) : completed ? (
                     <CheckCircle className="h-5 w-5 text-primary fill-primary/20" />
                   ) : (
                     <Circle className={cn(
@@ -360,10 +356,10 @@ export function LessonCalendar() {
                 />
               )}
               
-              {/* Learning Resources */}
+              {/* Learning Resources - now included in calendar modal */}
               <LessonResources lessonId={selectedLessonId} />
               
-              {/* User Notes */}
+              {/* User Notes - now included in calendar modal */}
               <LessonNotes lessonId={selectedLessonId} />
               
               {/* Completion Button */}

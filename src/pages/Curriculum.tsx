@@ -1,6 +1,6 @@
-// Updated Curriculum page with database-driven curriculum
+// Updated Curriculum page with consistent content logic
 import { useState, useMemo } from 'react';
-import { Search, Download, SlidersHorizontal, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Search, Download, SlidersHorizontal, Eye, EyeOff } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { DayCard } from '@/components/curriculum/DayCard';
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { useLessonAccess } from '@/hooks/useLessonAccess';
-import { useCurriculum, phaseInfo } from '@/hooks/useCurriculum';
+import { curriculumData, getTodayItem, phaseInfo } from '@/data/curriculum';
 import { searchCurriculum, filterByPhase, filterByConcept } from '@/utils/search';
 import { generateICS } from '@/utils/icsGenerator';
 import { supabase } from '@/lib/supabase';
@@ -27,8 +27,6 @@ const Curriculum = () => {
   const { user } = useAuth();
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
   const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked } = useLessonAccess();
-  const { curriculum, isLoading: isCurriculumLoading, error: curriculumError } = useCurriculum();
-  
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -279,7 +277,7 @@ const Curriculum = () => {
                     key={item.dayIndex}
                     item={item}
                     isCompleted={isCompleted(item.dayIndex)}
-                    isToday={item.dayIndex === currentDay}
+                    isToday={todayItem?.date === item.date}
                     isLocked={isLessonLocked(item.dayIndex)}
                     onToggleComplete={toggleComplete}
                   />

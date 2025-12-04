@@ -1,5 +1,5 @@
-// Updated DayCard with placeholder support and database sync
-import { CheckCircle, Circle, ArrowRight, Lock, Clock } from 'lucide-react';
+// Updated DayCard with locked state support
+import { CheckCircle, Circle, ArrowRight, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { EnrichedCurriculumItem } from '@/hooks/useCurriculum';
 import { getConceptColor } from '@/styles/conceptColors';
@@ -12,10 +12,11 @@ interface DayCardProps {
   isCompleted: boolean;
   isToday?: boolean;
   isLocked?: boolean;
-  onToggleComplete: (date: string, dayIndex: number) => void;
+  onToggleComplete: (date: string) => void;
 }
 
 export function DayCard({ item, isCompleted, isToday, isLocked = false, onToggleComplete }: DayCardProps) {
+  const dayIndex = item.dayIndex || curriculumData.findIndex(i => i.date === item.date) + 1;
   const conceptColor = getConceptColor(item.concept);
   const topicParts = item.topic.split(':');
   const title = topicParts[0];
@@ -29,13 +30,11 @@ export function DayCard({ item, isCompleted, isToday, isLocked = false, onToggle
         'relative p-5 rounded-xl border transition-all duration-300 flex flex-col h-full group',
         isLocked
           ? 'bg-muted/30 border-border opacity-60'
-          : isPlaceholder
-            ? 'bg-muted/20 border-dashed border-border/50'
-            : isCompleted 
-              ? 'bg-muted/50 border-border opacity-75' 
-              : isToday
-                ? 'bg-primary/5 border-primary/30 shadow-glow'
-                : 'bg-card border-border shadow-card hover:shadow-lg hover:-translate-y-0.5'
+          : isCompleted 
+            ? 'bg-muted/50 border-border opacity-75' 
+            : isToday
+              ? 'bg-primary/5 border-primary/30 shadow-glow'
+              : 'bg-card border-border shadow-card hover:shadow-lg hover:-translate-y-0.5'
       )}
     >
       {/* Locked indicator */}
@@ -60,7 +59,7 @@ export function DayCard({ item, isCompleted, isToday, isLocked = false, onToggle
       )}
 
       {/* Completed indicator */}
-      {isCompleted && !isLocked && !isPlaceholder && (
+      {isCompleted && !isLocked && (
         <div className="absolute top-4 right-4 text-primary animate-scale-in">
           <CheckCircle className="h-6 w-6 fill-primary/10" />
         </div>
@@ -76,7 +75,7 @@ export function DayCard({ item, isCompleted, isToday, isLocked = false, onToggle
             {item.day}
           </span>
         </div>
-        {!isCompleted && !isLocked && !isPlaceholder && (
+        {!isCompleted && !isLocked && (
           <span className={cn(
             'text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full text-primary-foreground',
             conceptColor.bg
@@ -90,7 +89,7 @@ export function DayCard({ item, isCompleted, isToday, isLocked = false, onToggle
       <div className="flex-grow">
         <h3 className={cn(
           'font-semibold mb-1 leading-snug',
-          isLocked || isPlaceholder ? 'text-muted-foreground' : isCompleted ? 'text-muted-foreground line-through' : 'text-foreground'
+          isLocked ? 'text-muted-foreground' : isCompleted ? 'text-muted-foreground line-through' : 'text-foreground'
         )}>
           {isPlaceholder ? 'Coming Soon' : title}
         </h3>
@@ -135,23 +134,7 @@ export function DayCard({ item, isCompleted, isToday, isLocked = false, onToggle
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Unlocked when you reach this day</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : isPlaceholder ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled
-                  className="h-8 text-xs font-semibold gap-1 cursor-not-allowed"
-                >
-                  Coming Soon
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Lesson content coming soon</p>
+                <p>Lesson coming soon - unlocked when you reach this day</p>
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -169,7 +152,7 @@ export function DayCard({ item, isCompleted, isToday, isLocked = false, onToggle
               <Button
                 variant={isCompleted ? 'outline' : 'default'}
                 size="sm"
-                onClick={() => onToggleComplete(item.date, item.dayIndex)}
+                onClick={() => onToggleComplete(item.date)}
                 className={cn(
                   'h-8 text-xs font-semibold transition-all',
                   !isCompleted && 'bg-primary hover:bg-primary/90'

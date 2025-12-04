@@ -1,4 +1,4 @@
-// Updated DailyLesson page with database-driven curriculum sync
+// Updated DailyLesson page with consistent content logic
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Calendar, CheckCircle, Flag, Lock, Eye, EyeOff } from 'lucide-react';
@@ -16,7 +16,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useSupabaseLesson } from '@/hooks/useSupabaseLesson';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { useLessonAccess } from '@/hooks/useLessonAccess';
-import { useCurriculum } from '@/hooks/useCurriculum';
+import { getCurrentDay } from '@/lib/supabase';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { getCurriculumItemByDayIndex, getDayIndexBySlug } from '@/utils/curriculumHelpers';
+import { curriculumData } from '@/data/curriculum';
 
 const TOTAL_DAYS = 121;
 
@@ -27,7 +30,8 @@ const DailyLesson = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
   const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked, canAccessLesson } = useLessonAccess();
-  const { curriculum, getItemByDayIndex, getItemBySlug } = useCurriculum();
+  
+  const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
   
   // Determine selected day from slug or use current day
   const [selectedDay, setSelectedDay] = useState(() => {
@@ -162,7 +166,7 @@ const DailyLesson = () => {
             variant="outline"
             size="sm"
             onClick={handleNextDay}
-            disabled={selectedDay >= TOTAL_DAYS || !canAccessLesson(selectedDay + 1)}
+            disabled={selectedDay >= TOTAL_DAYS || (!allowFutureLessons && selectedDay >= currentDay)}
             className="gap-2"
           >
             <span className="hidden sm:inline">Next</span>
@@ -188,22 +192,6 @@ const DailyLesson = () => {
               </p>
               <p className="text-xs text-muted-foreground">
                 Enable "Future" toggle above to preview upcoming lessons.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Placeholder Display */}
-        {currentItem && !currentItem.hasContent && !isLessonLocked(selectedDay) && (
-          <Card className="mb-6">
-            <CardContent className="py-12 text-center">
-              <div className="text-4xl mb-4">🚧</div>
-              <h3 className="font-semibold text-foreground mb-2">Coming Soon</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                The content for this lesson is being prepared.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Check back later for the full lesson content.
               </p>
             </CardContent>
           </Card>
