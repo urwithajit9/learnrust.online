@@ -28,7 +28,6 @@ const DailyLesson = () => {
   const navigate = useNavigate();
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const { settings } = useUserSettings();
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
   const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked, canAccessLesson } = useLessonAccess();
   
@@ -37,28 +36,31 @@ const DailyLesson = () => {
   // Determine selected day from slug or use current day
   const [selectedDay, setSelectedDay] = useState(() => {
     if (slug) {
-      const dayIndex = getDayIndexBySlug(slug);
-      return dayIndex || currentDay;
+      const item = getItemBySlug(slug);
+      return item?.dayIndex || currentDay;
     }
     return currentDay;
   });
   
   const { lesson, lessonId, isLoading, error } = useSupabaseLesson(slug || selectedDay);
   const percent = Math.round((completedCount / TOTAL_DAYS) * 100);
+  
+  // Get current curriculum item
+  const currentItem = getItemByDayIndex(selectedDay);
 
   // Update selected day when slug changes
   useEffect(() => {
     if (slug) {
-      const dayIndex = getDayIndexBySlug(slug);
-      if (dayIndex) {
-        setSelectedDay(dayIndex);
+      const item = getItemBySlug(slug);
+      if (item) {
+        setSelectedDay(item.dayIndex);
       }
     }
-  }, [slug]);
+  }, [slug, getItemBySlug]);
 
   const handlePrevDay = () => {
     if (selectedDay > 1) {
-      const prevItem = getCurriculumItemByDayIndex(selectedDay - 1);
+      const prevItem = getItemByDayIndex(selectedDay - 1);
       if (prevItem?.topicSlug) {
         navigate(`/lesson/${prevItem.topicSlug}`);
       }
@@ -66,8 +68,8 @@ const DailyLesson = () => {
   };
 
   const handleNextDay = () => {
-    if (selectedDay < TOTAL_DAYS) {
-      const nextItem = getCurriculumItemByDayIndex(selectedDay + 1);
+    if (selectedDay < TOTAL_DAYS && canAccessLesson(selectedDay + 1)) {
+      const nextItem = getItemByDayIndex(selectedDay + 1);
       if (nextItem?.topicSlug) {
         navigate(`/lesson/${nextItem.topicSlug}`);
       }
@@ -75,7 +77,7 @@ const DailyLesson = () => {
   };
 
   const handleToday = () => {
-    const todayItem = getCurriculumItemByDayIndex(currentDay);
+    const todayItem = getItemByDayIndex(currentDay);
     if (todayItem?.topicSlug) {
       navigate(`/lesson/${todayItem.topicSlug}`);
     }
@@ -207,7 +209,7 @@ const DailyLesson = () => {
             {/* Social Share */}
             <SocialShare 
               lessonTitle={lesson.title}
-              lessonSlug={curriculumData[selectedDay - 1]?.topicSlug || ''}
+              lessonSlug={currentItem?.topicSlug || ''}
             />
             
             {/* Learning Resources */}

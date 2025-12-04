@@ -18,10 +18,11 @@ export const fuzzyMatch = (text: string, query: string): boolean => {
   return queryIndex === queryLower.length;
 };
 
-export const searchCurriculum = (
-  data: CurriculumItem[], 
+// Generic search function that works with any curriculum-like items
+export const searchCurriculum = <T extends CurriculumItem>(
+  data: T[], 
   query: string
-): CurriculumItem[] => {
+): T[] => {
   if (!query.trim()) return data;
   
   const normalizedQuery = query.toLowerCase().trim();
@@ -34,18 +35,18 @@ export const searchCurriculum = (
   );
 };
 
-export const filterByPhase = (
-  data: CurriculumItem[], 
+export const filterByPhase = <T extends CurriculumItem>(
+  data: T[], 
   phase: string
-): CurriculumItem[] => {
+): T[] => {
   if (phase === 'all') return data;
   return data.filter(item => item.phase.toString() === phase);
 };
 
-export const filterByConcept = (
-  data: CurriculumItem[], 
+export const filterByConcept = <T extends CurriculumItem>(
+  data: T[], 
   concept: string
-): CurriculumItem[] => {
+): T[] => {
   if (!concept || concept === 'all') return data;
   return data.filter(item => item.concept === concept);
 };
