@@ -1,4 +1,4 @@
-// Updated DailyLesson page with consistent content logic
+// Updated DailyLesson page with database-driven curriculum sync
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Calendar, CheckCircle, Flag, Lock, Eye, EyeOff } from 'lucide-react';
@@ -16,10 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useSupabaseLesson } from '@/hooks/useSupabaseLesson';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { useLessonAccess } from '@/hooks/useLessonAccess';
-import { getCurrentDay } from '@/lib/supabase';
-import { useUserSettings } from '@/hooks/useUserSettings';
-import { getCurriculumItemByDayIndex, getDayIndexBySlug } from '@/utils/curriculumHelpers';
-import { curriculumData } from '@/data/curriculum';
+import { useCurriculum } from '@/hooks/useCurriculum';
 
 const TOTAL_DAYS = 121;
 
@@ -28,37 +25,38 @@ const DailyLesson = () => {
   const navigate = useNavigate();
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const { settings } = useUserSettings();
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
   const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked, canAccessLesson } = useLessonAccess();
-  
-  const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
+  const { curriculum, getItemByDayIndex, getItemBySlug } = useCurriculum();
   
   // Determine selected day from slug or use current day
   const [selectedDay, setSelectedDay] = useState(() => {
     if (slug) {
-      const dayIndex = getDayIndexBySlug(slug);
-      return dayIndex || currentDay;
+      const item = getItemBySlug(slug);
+      return item?.dayIndex || currentDay;
     }
     return currentDay;
   });
   
   const { lesson, lessonId, isLoading, error } = useSupabaseLesson(slug || selectedDay);
   const percent = Math.round((completedCount / TOTAL_DAYS) * 100);
+  
+  // Get current curriculum item
+  const currentItem = getItemByDayIndex(selectedDay);
 
   // Update selected day when slug changes
   useEffect(() => {
     if (slug) {
-      const dayIndex = getDayIndexBySlug(slug);
-      if (dayIndex) {
-        setSelectedDay(dayIndex);
+      const item = getItemBySlug(slug);
+      if (item) {
+        setSelectedDay(item.dayIndex);
       }
     }
-  }, [slug]);
+  }, [slug, getItemBySlug]);
 
   const handlePrevDay = () => {
     if (selectedDay > 1) {
-      const prevItem = getCurriculumItemByDayIndex(selectedDay - 1);
+      const prevItem = getItemByDayIndex(selectedDay - 1);
       if (prevItem?.topicSlug) {
         navigate(`/lesson/${prevItem.topicSlug}`);
       }
@@ -66,8 +64,8 @@ const DailyLesson = () => {
   };
 
   const handleNextDay = () => {
-    if (selectedDay < TOTAL_DAYS) {
-      const nextItem = getCurriculumItemByDayIndex(selectedDay + 1);
+    if (selectedDay < TOTAL_DAYS && canAccessLesson(selectedDay + 1)) {
+      const nextItem = getItemByDayIndex(selectedDay + 1);
       if (nextItem?.topicSlug) {
         navigate(`/lesson/${nextItem.topicSlug}`);
       }
@@ -75,7 +73,7 @@ const DailyLesson = () => {
   };
 
   const handleToday = () => {
-    const todayItem = getCurriculumItemByDayIndex(currentDay);
+    const todayItem = getItemByDayIndex(currentDay);
     if (todayItem?.topicSlug) {
       navigate(`/lesson/${todayItem.topicSlug}`);
     }
@@ -164,7 +162,7 @@ const DailyLesson = () => {
             variant="outline"
             size="sm"
             onClick={handleNextDay}
-            disabled={selectedDay >= TOTAL_DAYS || (!allowFutureLessons && selectedDay >= currentDay)}
+            disabled={selectedDay >= TOTAL_DAYS || !canAccessLesson(selectedDay + 1)}
             className="gap-2"
           >
             <span className="hidden sm:inline">Next</span>
@@ -195,6 +193,22 @@ const DailyLesson = () => {
           </Card>
         )}
 
+        {/* Placeholder Display */}
+        {currentItem && !currentItem.hasContent && !isLessonLocked(selectedDay) && (
+          <Card className="mb-6">
+            <CardContent className="py-12 text-center">
+              <div className="text-4xl mb-4">🚧</div>
+              <h3 className="font-semibold text-foreground mb-2">Coming Soon</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                The content for this lesson is being prepared.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Check back later for the full lesson content.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Lesson Content */}
         {lesson && !isLessonLocked(selectedDay) && (
           <div className="space-y-6">
@@ -207,7 +221,7 @@ const DailyLesson = () => {
             {/* Social Share */}
             <SocialShare 
               lessonTitle={lesson.title}
-              lessonSlug={curriculumData[selectedDay - 1]?.topicSlug || ''}
+              lessonSlug={currentItem?.topicSlug || ''}
             />
             
             {/* Learning Resources */}

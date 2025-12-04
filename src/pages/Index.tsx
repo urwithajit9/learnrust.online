@@ -1,3 +1,4 @@
+// Updated Index page with database-driven curriculum
 import { useNavigate, Link } from 'react-router-dom';
 import { Calendar, Download, Clock, Target, Zap, CalendarDays, CalendarPlus, AlertCircle } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
@@ -6,12 +7,12 @@ import { ProgressChart } from '@/components/charts/ProgressChart';
 import { ConceptDistributionChart } from '@/components/charts/ConceptDistributionChart';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import { Button } from '@/components/ui/button';
-import { curriculumData, getTodayItem } from '@/data/curriculum';
+import { useCurriculum } from '@/hooks/useCurriculum';
 import { getConceptDistribution } from '@/utils/stats';
 import { generateICS } from '@/utils/icsGenerator';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { useUserSettings } from '@/hooks/useUserSettings';
-import { getCurrentDay } from '@/lib/supabase';
+import { useLessonAccess } from '@/hooks/useLessonAccess';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -23,11 +24,13 @@ const Index = () => {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const { completedCount, isCompleted } = useUserProgress();
   const { settings } = useUserSettings();
+  const { currentDay } = useLessonAccess();
+  const { curriculum, getItemByDayIndex } = useCurriculum();
 
   const hasSchedule = !!settings?.start_date;
-  const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
-  const currentDay = hasSchedule ? getCurrentDay(startDate) : 1;
-  const todayItem = getTodayItem();
+  
+  // Get today's item from curriculum
+  const todayItem = getItemByDayIndex(currentDay);
 
   // Calculate stats from Supabase progress
   const stats = {
@@ -39,10 +42,19 @@ const Index = () => {
     hoursCompleted: Math.round((completedCount / TOTAL_DAYS) * ESTIMATED_HOURS),
   };
 
-  const distribution = getConceptDistribution(curriculumData, []);
+  // Convert enriched curriculum for distribution calculation
+  const distribution = getConceptDistribution(curriculum, []);
 
   const handleExportCalendar = () => {
-    generateICS(curriculumData);
+    // Convert to format expected by ICS generator
+    const exportData = curriculum.map(item => ({
+      date: item.date,
+      day: item.day,
+      topic: item.topic,
+      concept: item.concept,
+      phase: item.phase,
+    }));
+    generateICS(exportData);
     toast.success('Calendar exported!', {
       description: 'The .ics file has been downloaded.',
     });
