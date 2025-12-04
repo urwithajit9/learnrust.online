@@ -1,6 +1,7 @@
+// Updated DailyLesson page with consistent content logic
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar, CheckCircle, Flag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, CheckCircle, Flag, Lock, Eye, EyeOff } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import { LessonReportModal } from '@/components/modals/LessonReportModal';
@@ -9,8 +10,12 @@ import { SocialShare } from '@/components/lesson/SocialShare';
 import { LessonResources } from '@/components/lesson/LessonResources';
 import { LessonNotes } from '@/components/lesson/LessonNotes';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import { useSupabaseLesson } from '@/hooks/useSupabaseLesson';
 import { useUserProgress } from '@/hooks/useUserProgress';
+import { useLessonAccess } from '@/hooks/useLessonAccess';
 import { getCurrentDay } from '@/lib/supabase';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { getCurriculumItemByDayIndex, getDayIndexBySlug } from '@/utils/curriculumHelpers';
@@ -25,9 +30,9 @@ const DailyLesson = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const { settings } = useUserSettings();
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
+  const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked, canAccessLesson } = useLessonAccess();
   
   const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
-  const currentDay = getCurrentDay(startDate);
   
   // Determine selected day from slug or use current day
   const [selectedDay, setSelectedDay] = useState(() => {
@@ -135,13 +140,31 @@ const DailyLesson = () => {
                 <span className="hidden sm:inline">Today</span>
               </Button>
             )}
+            
+            {/* Future lessons toggle */}
+            <div className="hidden sm:flex items-center gap-2 p-2 rounded-lg bg-secondary/50 border border-border ml-2">
+              {allowFutureLessons ? (
+                <Eye className="h-3 w-3 text-primary" />
+              ) : (
+                <EyeOff className="h-3 w-3 text-muted-foreground" />
+              )}
+              <Label htmlFor="future-toggle-lesson" className="text-[10px] cursor-pointer">
+                Future
+              </Label>
+              <Switch
+                id="future-toggle-lesson"
+                checked={allowFutureLessons}
+                onCheckedChange={setAllowFutureLessons}
+                className="scale-75"
+              />
+            </div>
           </div>
           
           <Button
             variant="outline"
             size="sm"
             onClick={handleNextDay}
-            disabled={selectedDay >= TOTAL_DAYS}
+            disabled={selectedDay >= TOTAL_DAYS || (!allowFutureLessons && selectedDay >= currentDay)}
             className="gap-2"
           >
             <span className="hidden sm:inline">Next</span>
@@ -156,8 +179,24 @@ const DailyLesson = () => {
           </div>
         )}
 
+        {/* Locked Lesson Display */}
+        {isLessonLocked(selectedDay) && (
+          <Card className="mb-6">
+            <CardContent className="py-12 text-center">
+              <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="font-semibold text-foreground mb-2">Lesson Locked</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                This lesson will be available when you reach Day {selectedDay}.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Enable "Future" toggle above to preview upcoming lessons.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Lesson Content */}
-        {lesson && (
+        {lesson && !isLessonLocked(selectedDay) && (
           <div className="space-y-6">
             <LessonView 
               lesson={lesson} 

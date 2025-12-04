@@ -1,11 +1,13 @@
+// Updated NotificationModal - uses logged-in user's email (frozen)
 import { useState, useEffect } from 'react';
-import { Bell, Mail, Send, MessageCircle, Clock, X, Check } from 'lucide-react';
+import { Bell, Mail, Send, MessageCircle, Clock, Check, Lock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useNotificationSettings } from '@/hooks/useLocalStorage';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
 interface NotificationModalProps {
@@ -14,16 +16,21 @@ interface NotificationModalProps {
 }
 
 export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
+  const { user } = useAuth();
   const [settings, setSettings] = useNotificationSettings();
   const [localSettings, setLocalSettings] = useState(settings);
   const [saved, setSaved] = useState(false);
+
+  // Use logged-in user's email (frozen, cannot be changed)
+  const userEmail = user?.email || '';
 
   useEffect(() => {
     setLocalSettings(settings);
   }, [settings, isOpen]);
 
   const handleSave = () => {
-    setSettings(localSettings);
+    // Always save with user's email from auth
+    setSettings({ ...localSettings, email: userEmail });
     setSaved(true);
     setTimeout(() => {
       setSaved(false);
@@ -32,6 +39,8 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
   };
 
   const updateField = (field: keyof typeof localSettings, value: string | boolean) => {
+    // Prevent email from being changed
+    if (field === 'email') return;
     setLocalSettings(prev => ({ ...prev, [field]: value }));
   };
 
@@ -64,18 +73,22 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
             'space-y-4 transition-opacity',
             !localSettings.enabled && 'opacity-50 pointer-events-none'
           )}>
-            {/* Email */}
+            {/* Email - Frozen to user's logged-in email */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-sm font-medium">
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 Email Address
+                <Lock className="h-3 w-3 text-muted-foreground" />
               </Label>
               <Input
                 type="email"
-                placeholder="you@example.com"
-                value={localSettings.email}
-                onChange={(e) => updateField('email', e.target.value)}
+                value={userEmail}
+                disabled
+                className="bg-muted cursor-not-allowed"
               />
+              <p className="text-xs text-muted-foreground">
+                Using your account email. Change email in account settings.
+              </p>
             </div>
 
             {/* Telegram */}
