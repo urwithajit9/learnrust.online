@@ -1,6 +1,6 @@
 // Hook to fetch curriculum data from Supabase database
 // Ensures synchronization between Curriculum, Lessons, and Calendar
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { curriculumData as staticCurriculum, CurriculumItem, phaseInfo } from '@/data/curriculum';
 
@@ -124,25 +124,25 @@ export function useCurriculum(): UseCurriculumResult {
     return items;
   }, [lessonsMap]);
 
-  const getItemByDayIndex = (dayIndex: number): EnrichedCurriculumItem | undefined => {
+  const getItemByDayIndex = useCallback((dayIndex: number): EnrichedCurriculumItem | undefined => {
     return curriculum.find(item => item.dayIndex === dayIndex);
-  };
+  }, [curriculum]);
 
-  const getItemBySlug = (slug: string): EnrichedCurriculumItem | undefined => {
+  const getItemBySlug = useCallback((slug: string): EnrichedCurriculumItem | undefined => {
     return curriculum.find(item => item.topicSlug === slug);
-  };
+  }, [curriculum]);
 
-  const getItemsByPhase = (phase: number): EnrichedCurriculumItem[] => {
+  const getItemsByPhase = useCallback((phase: number): EnrichedCurriculumItem[] => {
     return curriculum.filter(item => item.phase === phase);
-  };
+  }, [curriculum]);
 
-  const getItemsByConcept = (concept: string): EnrichedCurriculumItem[] => {
+  const getItemsByConcept = useCallback((concept: string): EnrichedCurriculumItem[] => {
     return curriculum.filter(item => item.concept === concept);
-  };
+  }, [curriculum]);
 
-  const getAllConcepts = (): string[] => {
+  const getAllConcepts = useCallback((): string[] => {
     return [...new Set(curriculum.map(item => item.concept))];
-  };
+  }, [curriculum]);
 
   return {
     curriculum,
