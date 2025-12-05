@@ -1,7 +1,7 @@
 // Hook to fetch curriculum data from Supabase database
 // Ensures synchronization between Curriculum, Lessons, and Calendar
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { curriculumData as staticCurriculum, CurriculumItem, phaseInfo } from '@/data/curriculum';
 
 export interface EnrichedCurriculumItem extends CurriculumItem {
@@ -47,7 +47,13 @@ export function useCurriculum(): UseCurriculumResult {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch lessons from database to sync with curriculum
-  const fetchLessons = async () => {
+  const fetchLessons = useCallback(async () => {
+    // If Supabase is not configured, use static data only
+    if (!isSupabaseConfigured()) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     
@@ -77,7 +83,7 @@ export function useCurriculum(): UseCurriculumResult {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchLessons();
