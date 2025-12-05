@@ -4,6 +4,15 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { curriculumData as staticCurriculum, CurriculumItem, phaseInfo } from '@/data/curriculum';
 
+// Debug logging
+console.log('[useCurriculum] Module loaded');
+console.log('[useCurriculum] Static curriculum imported:', {
+  exists: !!staticCurriculum,
+  isArray: Array.isArray(staticCurriculum),
+  length: staticCurriculum?.length || 0,
+  firstItem: staticCurriculum?.[0] || 'N/A'
+});
+
 export interface EnrichedCurriculumItem extends CurriculumItem {
   dayIndex: number;
   lessonId?: string;
@@ -46,10 +55,15 @@ export function useCurriculum(): UseCurriculumResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  console.log('[useCurriculum] Hook called, isSupabaseConfigured:', isSupabaseConfigured());
+
   // Fetch lessons from database to sync with curriculum
   const fetchLessons = useCallback(async () => {
+    console.log('[useCurriculum] fetchLessons called');
+    
     // If Supabase is not configured, use static data only
     if (!isSupabaseConfigured()) {
+      console.log('[useCurriculum] Supabase not configured, using static data only');
       setIsLoading(false);
       return;
     }
@@ -92,9 +106,21 @@ export function useCurriculum(): UseCurriculumResult {
   // Merge static curriculum with database lessons
   // Database takes precedence for existing lessons, static data fills gaps
   const curriculum = useMemo<EnrichedCurriculumItem[]>(() => {
+    console.log('[useCurriculum] Building curriculum, staticCurriculum:', {
+      exists: !!staticCurriculum,
+      isArray: Array.isArray(staticCurriculum),
+      length: staticCurriculum?.length || 0
+    });
+    
     // Ensure we always return a valid array even if staticCurriculum is undefined
     if (!staticCurriculum || !Array.isArray(staticCurriculum)) {
-      return [];
+      console.error('[useCurriculum] ERROR: staticCurriculum is invalid!');
+      // Return placeholder items for all days
+      const placeholders: EnrichedCurriculumItem[] = [];
+      for (let i = 1; i <= TOTAL_DAYS; i++) {
+        placeholders.push(createPlaceholderItem(i));
+      }
+      return placeholders;
     }
     
     const items: EnrichedCurriculumItem[] = [];
@@ -132,6 +158,7 @@ export function useCurriculum(): UseCurriculumResult {
       }
     }
 
+    console.log('[useCurriculum] Curriculum built, items:', items.length);
     return items;
   }, [lessonsMap]);
 
