@@ -1,6 +1,6 @@
 // Hook to fetch all user notes across all lessons
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface NoteWithLesson {
@@ -21,7 +21,7 @@ export function useAllNotes() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchAllNotes = async () => {
-    if (!user) {
+    if (!user || !isSupabaseConfigured()) {
       setIsLoading(false);
       return;
     }
@@ -76,6 +76,8 @@ export function useAllNotes() {
   }, [user]);
 
   const deleteNote = async (noteId: string) => {
+    if (!isSupabaseConfigured()) return false;
+    
     try {
       const { error } = await supabase
         .from('lesson_notes')

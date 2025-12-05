@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Navigate, useLocation, Link } from 'react-router-dom';
-import { Loader2, Calendar } from 'lucide-react';
+import { Loader2, Calendar, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { Button } from '@/components/ui/button';
@@ -8,15 +8,30 @@ import { Button } from '@/components/ui/button';
 interface ProtectedRouteProps {
   children: ReactNode;
   requireStartDate?: boolean;
+  allowDemoMode?: boolean; // New prop to allow viewing without auth
 }
 
-export function ProtectedRoute({ children, requireStartDate = false }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requireStartDate = false, allowDemoMode = true }: ProtectedRouteProps) {
   const { user, isLoading: authLoading, isConfigured } = useAuth();
   const { settings, isLoading: settingsLoading } = useUserSettings();
   const location = useLocation();
 
-  // If Supabase is not configured, show an error message
+  // If Supabase is not configured but demo mode is allowed, show content with warning
   if (!isConfigured) {
+    if (allowDemoMode) {
+      return (
+        <div className="min-h-screen bg-background">
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2">
+            <div className="container mx-auto flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Demo Mode: Some features are disabled. Connect Supabase for full functionality.</span>
+            </div>
+          </div>
+          {children}
+        </div>
+      );
+    }
+    
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md text-center space-y-4">

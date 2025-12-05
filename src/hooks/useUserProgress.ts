@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProgressItem {
@@ -16,7 +16,7 @@ export function useUserProgress() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchProgress = useCallback(async () => {
-    if (!user) {
+    if (!user || !isSupabaseConfigured()) {
       setProgress([]);
       setIsLoading(false);
       return;
@@ -56,7 +56,7 @@ export function useUserProgress() {
   }, [fetchProgress]);
 
   const markComplete = async (lessonId: string) => {
-    if (!user || !lessonId) return { error: new Error('Invalid params') };
+    if (!user || !lessonId || !isSupabaseConfigured()) return { error: new Error('Invalid params or Supabase not configured') };
 
     const { error } = await supabase
       .from('user_progress')
@@ -76,7 +76,7 @@ export function useUserProgress() {
   };
 
   const markIncomplete = async (lessonId: string) => {
-    if (!user || !lessonId) return { error: new Error('Invalid params') };
+    if (!user || !lessonId || !isSupabaseConfigured()) return { error: new Error('Invalid params or Supabase not configured') };
 
     const { error } = await supabase
       .from('user_progress')
