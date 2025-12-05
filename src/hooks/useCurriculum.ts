@@ -92,6 +92,11 @@ export function useCurriculum(): UseCurriculumResult {
   // Merge static curriculum with database lessons
   // Database takes precedence for existing lessons, static data fills gaps
   const curriculum = useMemo<EnrichedCurriculumItem[]>(() => {
+    // Ensure we always return a valid array even if staticCurriculum is undefined
+    if (!staticCurriculum || !Array.isArray(staticCurriculum)) {
+      return [];
+    }
+    
     const items: EnrichedCurriculumItem[] = [];
 
     for (let dayIndex = 1; dayIndex <= TOTAL_DAYS; dayIndex++) {

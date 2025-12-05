@@ -23,6 +23,7 @@ export const searchCurriculum = <T extends CurriculumItem>(
   data: T[], 
   query: string
 ): T[] => {
+  if (!data || !Array.isArray(data)) return [];
   if (!query.trim()) return data;
   
   const normalizedQuery = query.toLowerCase().trim();
@@ -39,6 +40,7 @@ export const filterByPhase = <T extends CurriculumItem>(
   data: T[], 
   phase: string
 ): T[] => {
+  if (!data || !Array.isArray(data)) return [];
   if (phase === 'all') return data;
   return data.filter(item => item.phase.toString() === phase);
 };
@@ -47,6 +49,7 @@ export const filterByConcept = <T extends CurriculumItem>(
   data: T[], 
   concept: string
 ): T[] => {
+  if (!data || !Array.isArray(data)) return [];
   if (!concept || concept === 'all') return data;
   return data.filter(item => item.concept === concept);
 };
