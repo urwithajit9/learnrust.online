@@ -1,5 +1,5 @@
 // Updated DayCard with locked state support
-import { CheckCircle, Circle, ArrowRight, Lock } from 'lucide-react';
+import { CheckCircle, Circle, ArrowRight, Lock, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { EnrichedCurriculumItem } from '@/hooks/useCurriculum';
 import { getConceptColor } from '@/styles/conceptColors';
@@ -30,8 +30,8 @@ export function DayCard({ item, isCompleted, isToday, isLocked = false, onToggle
         'relative p-5 rounded-xl border transition-all duration-300 flex flex-col h-full group',
         isLocked
           ? 'bg-muted/30 border-border opacity-60'
-          : isCompleted 
-            ? 'bg-muted/50 border-border opacity-75' 
+          : isCompleted
+            ? 'bg-muted/50 border-border opacity-75'
             : isToday
               ? 'bg-primary/5 border-primary/30 shadow-glow'
               : 'bg-card border-border shadow-card hover:shadow-lg hover:-translate-y-0.5'

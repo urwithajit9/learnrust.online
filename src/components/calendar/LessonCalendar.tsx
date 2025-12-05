@@ -17,7 +17,7 @@ import { LessonNotes } from '@/components/lesson/LessonNotes';
 import { DailyLesson, LessonData, LessonPlaceholder } from '@/types/lesson';
 import { getSampleLesson } from '@/data/sampleLesson';
 import { cn } from '@/lib/utils';
-
+import { curriculumData } from "@/data/curriculum";
 const TOTAL_DAYS = 121;
 const DAYS_PER_PAGE = 30;
 
@@ -52,9 +52,11 @@ export function LessonCalendar() {
       endDayIndex = phaseEnds[selectedPhase - 1];
     }
 
-    return curriculum
-      .filter(item => item.dayIndex >= startDayIndex && item.dayIndex <= endDayIndex)
-      .map(item => {
+    return curriculumData
+      .filter(
+        (item) => item.dayIndex >= startDayIndex && item.dayIndex <= endDayIndex
+      )
+      .map((item) => {
         const date = new Date(startDate);
         date.setDate(date.getDate() + item.dayIndex - 1);
         return {
@@ -141,7 +143,7 @@ export function LessonCalendar() {
 
   const handleToggleComplete = async () => {
     if (!selectedDay || !selectedLessonId) return;
-    
+
     if (isCompleted(selectedDay)) {
       await markIncomplete(selectedLessonId);
     } else {
@@ -149,13 +151,13 @@ export function LessonCalendar() {
     }
   };
 
-  if (isCurriculumLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // if (isCurriculumLoading) {
+  //   return (
+  //     <div className="flex items-center justify-center py-20">
+  //       <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="space-y-6">
@@ -167,7 +169,7 @@ export function LessonCalendar() {
             Day {currentDay} of {TOTAL_DAYS}
           </p>
         </div>
-        
+
         {/* View Mode Switcher and Settings */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           {/* Future lessons toggle */}
@@ -186,7 +188,7 @@ export function LessonCalendar() {
               onCheckedChange={setAllowFutureLessons}
             />
           </div>
-          
+
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
             <TabsList>
               <TabsTrigger value="paginated">Paginated</TabsTrigger>
@@ -194,7 +196,7 @@ export function LessonCalendar() {
               <TabsTrigger value="all">All Days</TabsTrigger>
             </TabsList>
           </Tabs>
-          
+
           {viewMode === 'paginated' && (
             <div className="flex items-center gap-2">
               <Button
@@ -218,7 +220,7 @@ export function LessonCalendar() {
               </Button>
             </div>
           )}
-          
+
           {viewMode === 'phase' && (
             <div className="flex items-center gap-2">
               {[1, 2, 3, 4].map(phase => (
@@ -243,7 +245,7 @@ export function LessonCalendar() {
           const locked = isLessonLocked(day.dayIndex);
           const formattedDate = day.date.toISOString().split('T')[0];
           const isPlaceholder = !day.hasContent;
-          
+
           return (
             <button
               key={day.dayIndex}
@@ -251,7 +253,7 @@ export function LessonCalendar() {
               disabled={locked}
               className={cn(
                 'relative p-4 rounded-lg border transition-all text-left',
-                locked 
+                locked
                   ? 'opacity-50 cursor-not-allowed bg-muted border-border'
                   : 'hover:border-primary hover:shadow-md hover:scale-[1.02]',
                 day.isToday && !locked && 'ring-2 ring-primary ring-offset-2',
@@ -265,7 +267,7 @@ export function LessonCalendar() {
                   Coming Soon
                 </div>
               )}
-              
+
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -335,33 +337,33 @@ export function LessonCalendar() {
               </div>
             </div>
           </DialogHeader>
-          
+
           {isLoadingLesson ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : selectedLesson ? (
             <div className="space-y-4">
-              <LessonView 
-                lesson={selectedLesson} 
+              <LessonView
+                lesson={selectedLesson}
                 day={selectedDay || 1}
                 isLoading={false}
               />
-              
+
               {/* Social Share */}
               {selectedLesson && selectedDay && (
-                <SocialShare 
+                <SocialShare
                   lessonTitle={selectedLesson.title}
                   lessonSlug={getItemByDayIndex(selectedDay)?.topicSlug || ''}
                 />
               )}
-              
+
               {/* Learning Resources - now included in calendar modal */}
               <LessonResources lessonId={selectedLessonId} />
-              
+
               {/* User Notes - now included in calendar modal */}
               <LessonNotes lessonId={selectedLessonId} />
-              
+
               {/* Completion Button */}
               {selectedLessonId && selectedDay && (
                 <Button
