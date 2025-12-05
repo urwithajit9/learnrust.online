@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, getCurrentDay } from '@/lib/supabase';
+import { supabase, getCurrentDay, isSupabaseConfigured } from '@/lib/supabase';
 import { useUserSettings } from './useUserSettings';
 import { DailyLesson, LessonData, LessonPlaceholder } from '@/types/lesson';
 import { getSampleLesson } from '@/data/sampleLesson';
@@ -50,6 +50,15 @@ export function useSupabaseLesson(slugOrDay?: string | number) {
     async function fetchLesson() {
       setIsLoading(true);
       setError(null);
+
+      // If Supabase is not configured, use sample/placeholder
+      if (!isSupabaseConfigured()) {
+        const sampleLesson = getSampleLesson(currentDay);
+        setLesson(sampleLesson || placeholderLesson);
+        setLessonId(null);
+        setIsLoading(false);
+        return;
+      }
 
       try {
         let query = supabase.from('lessons').select('*');

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface UserSettings {
@@ -15,7 +15,7 @@ export function useUserSettings() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !isSupabaseConfigured()) {
       setSettings(null);
       setIsLoading(false);
       return;
@@ -25,7 +25,7 @@ export function useUserSettings() {
   }, [user]);
 
   const fetchSettings = async () => {
-    if (!user) return;
+    if (!user || !isSupabaseConfigured()) return;
     
     setIsLoading(true);
     const { data, error } = await supabase
@@ -43,7 +43,7 @@ export function useUserSettings() {
   };
 
   const saveStartDate = async (startDate: Date) => {
-    if (!user) return { error: new Error('Not authenticated') };
+    if (!user || !isSupabaseConfigured()) return { error: new Error('Not authenticated or Supabase not configured') };
 
     const dateStr = startDate.toISOString().split('T')[0];
 
