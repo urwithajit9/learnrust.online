@@ -1,6 +1,6 @@
-// Updated Curriculum page with consistent content logic
+// Updated Curriculum page with database-driven curriculum
 import { useState, useMemo } from 'react';
-import { Search, Download, SlidersHorizontal, Eye, EyeOff } from 'lucide-react';
+import { Search, Download, SlidersHorizontal, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { DayCard } from '@/components/curriculum/DayCard';
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { useLessonAccess } from '@/hooks/useLessonAccess';
-import { curriculumData, getTodayItem, phaseInfo } from '@/data/curriculum';
+import { useCurriculum, phaseInfo } from '@/hooks/useCurriculum';
 import { searchCurriculum, filterByPhase, filterByConcept } from '@/utils/search';
 import { generateICS } from '@/utils/icsGenerator';
 import { supabase } from '@/lib/supabase';
@@ -24,9 +24,20 @@ import { cn } from '@/lib/utils';
 const TOTAL_DAYS = 121;
 
 const Curriculum = () => {
+  console.log('[Curriculum] Component rendering');
+  
   const { user } = useAuth();
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
   const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked } = useLessonAccess();
+  const { curriculum, isLoading: isCurriculumLoading, error: curriculumError } = useCurriculum();
+  
+  console.log('[Curriculum] Hook results:', {
+    curriculumLength: curriculum?.length || 0,
+    isLoading: isCurriculumLoading,
+    error: curriculumError,
+    curriculumIsArray: Array.isArray(curriculum)
+  });
+  
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,10 +48,16 @@ const Curriculum = () => {
 
   // Filter curriculum data using generic search functions
   const filteredData = useMemo(() => {
+    console.log('[Curriculum] Filtering data, curriculum:', curriculum?.length || 0);
+    if (!curriculum || !Array.isArray(curriculum)) {
+      console.error('[Curriculum] ERROR: curriculum is not a valid array!');
+      return [];
+    }
     let result = curriculum;
     result = searchCurriculum(result, searchQuery);
     result = filterByPhase(result, selectedPhase);
     result = filterByConcept(result, selectedConcept);
+    console.log('[Curriculum] Filtered result:', result?.length || 0);
     return result;
   }, [searchQuery, selectedPhase, selectedConcept, curriculum]);
 
@@ -277,7 +294,7 @@ const Curriculum = () => {
                     key={item.dayIndex}
                     item={item}
                     isCompleted={isCompleted(item.dayIndex)}
-                    isToday={todayItem?.date === item.date}
+                    isToday={item.dayIndex === currentDay}
                     isLocked={isLessonLocked(item.dayIndex)}
                     onToggleComplete={toggleComplete}
                   />
