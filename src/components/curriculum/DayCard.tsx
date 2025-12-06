@@ -90,11 +90,11 @@ export function DayCard({ item, isCompleted, isToday, isLocked = false, onToggle
       <div className="flex-grow">
         <h3 className={cn(
           'font-semibold mb-1 leading-snug',
-          isLocked || isPlaceholder ? 'text-muted-foreground' : isCompleted ? 'text-muted-foreground line-through' : 'text-foreground'
+          isLocked ? 'text-muted-foreground' : isCompleted ? 'text-muted-foreground line-through' : 'text-foreground'
         )}>
-          {isPlaceholder ? 'Coming Soon' : title}
+          {title}
         </h3>
-        {description && !isPlaceholder && (
+        {description && (
           <p className={cn(
             'text-sm leading-relaxed',
             isCompleted || isLocked ? 'text-muted-foreground/70' : 'text-muted-foreground'
@@ -102,7 +102,7 @@ export function DayCard({ item, isCompleted, isToday, isLocked = false, onToggle
             {description}
           </p>
         )}
-        {isPlaceholder && (
+        {isPlaceholder && !description && (
           <p className="text-sm text-muted-foreground/70 italic">
             Lesson content is being prepared...
           </p>

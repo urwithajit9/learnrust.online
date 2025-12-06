@@ -1,5 +1,5 @@
 // Updated LessonCalendar with database-driven curriculum sync
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle, Circle, Loader2, Lock, Eye, EyeOff, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -29,6 +29,11 @@ export function LessonCalendar() {
   const { isCompleted, markComplete, markIncomplete } = useUserProgress();
   const { currentDay, allowFutureLessons, setAllowFutureLessons, canAccessLesson, isLessonLocked } = useLessonAccess();
   const { curriculum, isLoading: isCurriculumLoading, getItemByDayIndex } = useCurriculum();
+  
+  // Safe wrapper for getItemByDayIndex
+  const safeGetItemByDayIndex = useCallback((dayIndex: number) => {
+    return getItemByDayIndex ? getItemByDayIndex(dayIndex) : undefined;
+  }, [getItemByDayIndex]);
   
   const [viewMode, setViewMode] = useState<ViewMode>('paginated');
   const [page, setPage] = useState(0);
@@ -285,9 +290,9 @@ export function LessonCalendar() {
                   </div>
                   <p className={cn(
                     'text-xs line-clamp-2',
-                    isPlaceholder ? 'text-muted-foreground/70 italic' : 'text-muted-foreground'
+                    isPlaceholder ? 'text-muted-foreground/70' : 'text-muted-foreground'
                   )}>
-                    {isPlaceholder ? 'Content coming soon...' : day.topic}
+                    {day.topic || 'Content coming soon...'}
                   </p>
                   {/* Estimated time */}
                   <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground/70">
@@ -356,7 +361,7 @@ export function LessonCalendar() {
               {selectedLesson && selectedDay && (
                 <SocialShare 
                   lessonTitle={selectedLesson.title}
-                  lessonSlug={getItemByDayIndex(selectedDay)?.topicSlug || ''}
+                  lessonSlug={safeGetItemByDayIndex(selectedDay)?.topicSlug || ''}
                 />
               )}
               

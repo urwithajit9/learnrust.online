@@ -1,5 +1,5 @@
 // Updated DailyLesson page with database-driven curriculum sync
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Calendar, CheckCircle, Flag, Lock, Eye, EyeOff } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
@@ -29,10 +29,20 @@ const DailyLesson = () => {
   const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked, canAccessLesson } = useLessonAccess();
   const { curriculum, getItemByDayIndex, getItemBySlug } = useCurriculum();
   
+  // Helper to safely get item by slug
+  const safeGetItemBySlug = useCallback((s: string) => {
+    return getItemBySlug ? getItemBySlug(s) : undefined;
+  }, [getItemBySlug]);
+  
+  // Helper to safely get item by day index
+  const safeGetItemByDayIndex = useCallback((idx: number) => {
+    return getItemByDayIndex ? getItemByDayIndex(idx) : undefined;
+  }, [getItemByDayIndex]);
+  
   // Determine selected day from slug or use current day
   const [selectedDay, setSelectedDay] = useState(() => {
     if (slug) {
-      const item = getItemBySlug(slug);
+      const item = safeGetItemBySlug(slug);
       return item?.dayIndex || currentDay;
     }
     return currentDay;
@@ -42,21 +52,21 @@ const DailyLesson = () => {
   const percent = Math.round((completedCount / TOTAL_DAYS) * 100);
   
   // Get current curriculum item
-  const currentItem = getItemByDayIndex(selectedDay);
+  const currentItem = safeGetItemByDayIndex(selectedDay);
 
   // Update selected day when slug changes
   useEffect(() => {
     if (slug) {
-      const item = getItemBySlug(slug);
+      const item = safeGetItemBySlug(slug);
       if (item) {
         setSelectedDay(item.dayIndex);
       }
     }
-  }, [slug, getItemBySlug]);
+  }, [slug, safeGetItemBySlug]);
 
   const handlePrevDay = () => {
     if (selectedDay > 1) {
-      const prevItem = getItemByDayIndex(selectedDay - 1);
+      const prevItem = safeGetItemByDayIndex(selectedDay - 1);
       if (prevItem?.topicSlug) {
         navigate(`/lesson/${prevItem.topicSlug}`);
       }
@@ -65,7 +75,7 @@ const DailyLesson = () => {
 
   const handleNextDay = () => {
     if (selectedDay < TOTAL_DAYS && canAccessLesson(selectedDay + 1)) {
-      const nextItem = getItemByDayIndex(selectedDay + 1);
+      const nextItem = safeGetItemByDayIndex(selectedDay + 1);
       if (nextItem?.topicSlug) {
         navigate(`/lesson/${nextItem.topicSlug}`);
       }
@@ -73,7 +83,7 @@ const DailyLesson = () => {
   };
 
   const handleToday = () => {
-    const todayItem = getItemByDayIndex(currentDay);
+    const todayItem = safeGetItemByDayIndex(currentDay);
     if (todayItem?.topicSlug) {
       navigate(`/lesson/${todayItem.topicSlug}`);
     }
