@@ -24,19 +24,10 @@ import { cn } from '@/lib/utils';
 const TOTAL_DAYS = 121;
 
 const Curriculum = () => {
-  console.log('[Curriculum] Component rendering');
-  
   const { user } = useAuth();
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
   const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked } = useLessonAccess();
   const { curriculum, isLoading: isCurriculumLoading, error: curriculumError } = useCurriculum();
-  
-  console.log('[Curriculum] Hook results:', {
-    curriculumLength: curriculum?.length || 0,
-    isLoading: isCurriculumLoading,
-    error: curriculumError,
-    curriculumIsArray: Array.isArray(curriculum)
-  });
   
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -48,16 +39,13 @@ const Curriculum = () => {
 
   // Filter curriculum data using generic search functions
   const filteredData = useMemo(() => {
-    console.log('[Curriculum] Filtering data, curriculum:', curriculum?.length || 0);
-    if (!curriculum || !Array.isArray(curriculum)) {
-      console.error('[Curriculum] ERROR: curriculum is not a valid array!');
+    if (!curriculum || curriculum.length === 0) {
       return [];
     }
     let result = curriculum;
     result = searchCurriculum(result, searchQuery);
     result = filterByPhase(result, selectedPhase);
     result = filterByConcept(result, selectedConcept);
-    console.log('[Curriculum] Filtered result:', result?.length || 0);
     return result;
   }, [searchQuery, selectedPhase, selectedConcept, curriculum]);
 

@@ -1,5 +1,5 @@
-// Updated DailyLesson page with consistent content logic
-import { useState, useEffect } from 'react';
+// Updated DailyLesson page with database-driven curriculum sync
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Calendar, CheckCircle, Flag, Lock, Eye, EyeOff } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
@@ -16,14 +16,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useSupabaseLesson } from '@/hooks/useSupabaseLesson';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { useLessonAccess } from '@/hooks/useLessonAccess';
-import { getCurrentDay } from '@/lib/supabase';
-import { useUserSettings } from '@/hooks/useUserSettings';
-import {getCurriculumItemBySlug, getCurriculumItemByDayIndex, getDayIndexBySlug } from '@/utils/curriculumHelpers';
-import { curriculumData } from '@/data/curriculum';
+import { useCurriculum } from '@/hooks/useCurriculum';
 
 const TOTAL_DAYS = 121;
-
-
 
 const DailyLesson = () => {
   const { slug } = useParams<{ slug?: string }>();
@@ -32,38 +27,46 @@ const DailyLesson = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const { completedCount, isCompleted, markComplete, markIncomplete } = useUserProgress();
   const { currentDay, allowFutureLessons, setAllowFutureLessons, isLessonLocked, canAccessLesson } = useLessonAccess();
-  const { settings } = useUserSettings();
-
-  const startDate = settings?.start_date ? new Date(settings.start_date) : new Date();
-
+  const { curriculum, getItemByDayIndex, getItemBySlug } = useCurriculum();
+  
+  // Helper to safely get item by slug
+  const safeGetItemBySlug = useCallback((s: string) => {
+    return getItemBySlug ? getItemBySlug(s) : undefined;
+  }, [getItemBySlug]);
+  
+  // Helper to safely get item by day index
+  const safeGetItemByDayIndex = useCallback((idx: number) => {
+    return getItemByDayIndex ? getItemByDayIndex(idx) : undefined;
+  }, [getItemByDayIndex]);
+  
   // Determine selected day from slug or use current day
   const [selectedDay, setSelectedDay] = useState(() => {
     if (slug) {
-      const item = getCurriculumItemBySlug(slug);
+      const item = safeGetItemBySlug(slug);
       return item?.dayIndex || currentDay;
     }
     return currentDay;
   });
-
+  
   const { lesson, lessonId, isLoading, error } = useSupabaseLesson(slug || selectedDay);
   const percent = Math.round((completedCount / TOTAL_DAYS) * 100);
-
+  
   // Get current curriculum item
-  const currentItem = getCurriculumItemByDayIndex(selectedDay);
+  const currentItem = safeGetItemByDayIndex(selectedDay);
 
   // Update selected day when slug changes
   useEffect(() => {
     if (slug) {
-      const item = getCurriculumItemBySlug(slug);
+      const item = safeGetItemBySlug(slug);
       if (item) {
         setSelectedDay(item.dayIndex);
       }
     }
-  }, [slug]);
+  }, [slug, safeGetItemBySlug]);
 
   const handlePrevDay = () => {
     if (selectedDay > 1) {
-      const prevItem = getCurriculumItemByDayIndex(selectedDay - 1);
+      const prevItem = safeGetItemByDayIndex(selectedDay - 1);
       if (prevItem?.topicSlug) {
         navigate(`/lesson/${prevItem.topicSlug}`);
       }
@@ -72,7 +75,7 @@ const DailyLesson = () => {
 
   const handleNextDay = () => {
     if (selectedDay < TOTAL_DAYS && canAccessLesson(selectedDay + 1)) {
-      const nextItem = getCurriculumItemByDayIndex(selectedDay + 1);
+      const nextItem = safeGetItemByDayIndex(selectedDay + 1);
       if (nextItem?.topicSlug) {
         navigate(`/lesson/${nextItem.topicSlug}`);
       }
@@ -80,7 +83,7 @@ const DailyLesson = () => {
   };
 
   const handleToday = () => {
-    const todayItem = getCurriculumItemByDayIndex(currentDay);
+    const todayItem = safeGetItemByDayIndex(currentDay);
     if (todayItem?.topicSlug) {
       navigate(`/lesson/${todayItem.topicSlug}`);
     }
@@ -88,7 +91,7 @@ const DailyLesson = () => {
 
   const handleToggleComplete = async () => {
     if (!lessonId) return;
-
+    
     if (isCompleted(selectedDay)) {
       await markIncomplete(lessonId);
     } else {
@@ -98,14 +101,14 @@ const DailyLesson = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar
-        progress={percent}
-        onNotificationClick={() => setNotificationOpen(true)}
+      <Navbar 
+        progress={percent} 
+        onNotificationClick={() => setNotificationOpen(true)} 
       />
-
-      <NotificationModal
-        isOpen={notificationOpen}
-        onClose={() => setNotificationOpen(false)}
+      
+      <NotificationModal 
+        isOpen={notificationOpen} 
+        onClose={() => setNotificationOpen(false)} 
       />
 
       <LessonReportModal
@@ -129,7 +132,7 @@ const DailyLesson = () => {
             <ChevronLeft className="h-4 w-4" />
             <span className="hidden sm:inline">Previous</span>
           </Button>
-
+          
           <div className="flex items-center gap-3">
             <span className="text-lg font-bold text-foreground">
               Day {selectedDay}
@@ -145,7 +148,7 @@ const DailyLesson = () => {
                 <span className="hidden sm:inline">Today</span>
               </Button>
             )}
-
+            
             {/* Future lessons toggle */}
             <div className="hidden sm:flex items-center gap-2 p-2 rounded-lg bg-secondary/50 border border-border ml-2">
               {allowFutureLessons ? (
@@ -164,12 +167,12 @@ const DailyLesson = () => {
               />
             </div>
           </div>
-
+          
           <Button
             variant="outline"
             size="sm"
             onClick={handleNextDay}
-            disabled={selectedDay >= TOTAL_DAYS || (!allowFutureLessons && selectedDay >= currentDay)}
+            disabled={selectedDay >= TOTAL_DAYS || !canAccessLesson(selectedDay + 1)}
             className="gap-2"
           >
             <span className="hidden sm:inline">Next</span>
@@ -200,27 +203,43 @@ const DailyLesson = () => {
           </Card>
         )}
 
+        {/* Placeholder Display */}
+        {currentItem && !currentItem.hasContent && !isLessonLocked(selectedDay) && (
+          <Card className="mb-6">
+            <CardContent className="py-12 text-center">
+              <div className="text-4xl mb-4">🚧</div>
+              <h3 className="font-semibold text-foreground mb-2">Coming Soon</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                The content for this lesson is being prepared.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Check back later for the full lesson content.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Lesson Content */}
         {lesson && !isLessonLocked(selectedDay) && (
           <div className="space-y-6">
-            <LessonView
-              lesson={lesson}
+            <LessonView 
+              lesson={lesson} 
               day={selectedDay}
               isLoading={isLoading}
             />
-
+            
             {/* Social Share */}
-            <SocialShare
+            <SocialShare 
               lessonTitle={lesson.title}
               lessonSlug={currentItem?.topicSlug || ''}
             />
-
+            
             {/* Learning Resources */}
             <LessonResources lessonId={lessonId} />
-
+            
             {/* User Notes */}
             <LessonNotes lessonId={lessonId} />
-
+            
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
               {lessonId && (
@@ -239,7 +258,7 @@ const DailyLesson = () => {
                   )}
                 </Button>
               )}
-
+              
               <Button
                 variant="outline"
                 onClick={() => setReportOpen(true)}
