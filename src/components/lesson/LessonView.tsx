@@ -110,7 +110,10 @@ export function LessonView({ lesson, day, isLoading, className }: LessonViewProp
         </div>
         <ChallengeEditor 
           template={lesson.challenge.template}
+          task={lesson.challenge.task}
           instructions={lesson.challenge.instructions}
+          hint={lesson.challenge.hint}
+          toolsUsed={lesson.challenge.tools_used}
           expectedOutput={lesson.challenge.expectedOutput}
         />
       </section>
