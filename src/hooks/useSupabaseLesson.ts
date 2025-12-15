@@ -13,7 +13,7 @@ interface SupabaseLessonRow {
   theory: string;
   core_example: { code: string; explanation: string } | null;
   pitfall_example: { code: string; errorHint: string } | null;
-  challenge: { template: string; instructions: string; expectedOutput: string } | null;
+  challenge: { template: string; instructions?: string; task?: string; hint?: string; tools_used?: string; expectedOutput: string } | null;
 }
 
 const placeholderLesson: LessonPlaceholder = {
@@ -31,7 +31,7 @@ function transformToLessonData(row: SupabaseLessonRow): DailyLesson {
     theory: row.theory,
     coreExample: row.core_example || { code: '', explanation: '' },
     pitfallExample: row.pitfall_example || { code: '', errorHint: '' },
-    challenge: row.challenge || { template: '', instructions: '', expectedOutput: '' },
+    challenge: row.challenge || { template: '', task: '', expectedOutput: '' },
   };
 }
 
