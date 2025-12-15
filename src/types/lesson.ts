@@ -10,7 +10,10 @@ export interface PitfallExample {
 
 export interface Challenge {
   template: string;
-  instructions: string;
+  instructions?: string; // legacy field
+  task?: string; // new field from database
+  hint?: string;
+  tools_used?: string;
   expectedOutput: string;
 }
 
