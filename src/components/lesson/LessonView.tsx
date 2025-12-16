@@ -5,6 +5,8 @@ import { ChallengeEditor } from './ChallengeEditor';
 import { getConceptColor } from '@/styles/conceptColors';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface LessonViewProps {
   lesson: LessonData;
@@ -61,10 +63,10 @@ export function LessonView({ lesson, day, isLoading, className }: LessonViewProp
           <Lightbulb className="h-5 w-5 text-primary" />
           Theory
         </div>
-        <div className="p-6 rounded-xl bg-card border border-border">
-          <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+        <div className="p-6 rounded-xl bg-card border border-border prose prose-sm sm:prose-base max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-primary prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-a:text-primary prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
             {lesson.theory}
-          </p>
+          </ReactMarkdown>
         </div>
       </section>
 
