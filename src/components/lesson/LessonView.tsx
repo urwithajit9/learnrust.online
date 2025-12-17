@@ -63,7 +63,21 @@ export function LessonView({ lesson, day, isLoading, className }: LessonViewProp
           <Lightbulb className="h-5 w-5 text-primary" />
           Theory
         </div>
-        <div className="p-6 rounded-xl bg-card border border-border prose prose-sm sm:prose-base max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-primary prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-a:text-primary prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
+        <div className="theory-content p-6 rounded-xl bg-card border border-border prose prose-sm sm:prose-base max-w-none dark:prose-invert 
+          prose-headings:text-foreground prose-headings:font-bold prose-headings:mt-6 prose-headings:mb-3
+          prose-h2:text-xl prose-h2:border-b prose-h2:border-border prose-h2:pb-2
+          prose-h3:text-lg prose-h3:text-primary
+          prose-p:text-foreground prose-p:leading-relaxed prose-p:my-3
+          prose-strong:text-foreground prose-strong:font-semibold
+          prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-mono prose-code:text-sm prose-code:before:content-none prose-code:after:content-none
+          prose-pre:bg-slate-900 prose-pre:text-slate-50 prose-pre:border prose-pre:border-slate-700 prose-pre:rounded-lg prose-pre:shadow-lg prose-pre:my-4 prose-pre:overflow-x-auto
+          prose-pre:prose-code:bg-transparent prose-pre:prose-code:text-slate-50 prose-pre:prose-code:p-0
+          prose-a:text-primary prose-a:underline prose-a:underline-offset-2 hover:prose-a:text-primary/80
+          prose-ul:text-foreground prose-ul:my-3 prose-ul:space-y-1
+          prose-ol:text-foreground prose-ol:my-3 prose-ol:space-y-1
+          prose-li:text-foreground prose-li:leading-relaxed
+          prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:italic
+          prose-hr:border-border prose-hr:my-6">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>
             {lesson.theory}
           </ReactMarkdown>
