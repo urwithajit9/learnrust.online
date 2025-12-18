@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import { Bell, Calendar, Trash2, Download, RotateCcw, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, Calendar, Trash2, Download, RotateCcw, ExternalLink, Send, CheckCircle2 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
@@ -18,8 +17,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { useCompletedItems, useNotificationSettings } from '@/hooks/useLocalStorage';
+import { useCompletedItems } from '@/hooks/useLocalStorage';
 import { useUserProgress } from '@/hooks/useUserProgress';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { useTelegramActivation } from '@/hooks/useTelegramActivation';
 import { curriculumData } from '@/data/curriculum';
 import { generateICS } from '@/utils/icsGenerator';
 import { toast } from 'sonner';
@@ -28,9 +29,21 @@ const TOTAL_DAYS = 121;
 
 const Settings = () => {
   const [completedItems, setCompletedItems] = useCompletedItems();
-  const [notificationSettings, setNotificationSettings] = useNotificationSettings();
   const { completedCount } = useUserProgress();
+  const { getChannelPreference, savePreference, isLoading: prefsLoading } = useNotificationPreferences();
+  const { isConnected: telegramConnected } = useTelegramActivation();
   const [notificationModalOpen, setNotificationModalOpen] = useState(false);
+  
+  // Local state for quick toggle
+  const [telegramEnabled, setTelegramEnabled] = useState(false);
+
+  // Sync with fetched preferences
+  useEffect(() => {
+    const telegramPref = getChannelPreference('telegram');
+    if (telegramPref) {
+      setTelegramEnabled(telegramPref.enabled);
+    }
+  }, [getChannelPreference]);
   
   const stats = {
     total: TOTAL_DAYS,
@@ -52,10 +65,16 @@ const Settings = () => {
     });
   };
 
-  const handleToggleNotifications = (enabled: boolean) => {
-    setNotificationSettings(prev => ({ ...prev, enabled }));
+  const handleToggleNotifications = async (enabled: boolean) => {
+    setTelegramEnabled(enabled);
+    const telegramPref = getChannelPreference('telegram');
+    const time = telegramPref?.delivery_time?.slice(0, 5) || '09:00';
+    const tz = telegramPref?.timezone || 'UTC';
+    await savePreference('telegram', enabled, time, tz);
     toast.success(enabled ? 'Notifications enabled' : 'Notifications disabled');
   };
+
+  const telegramPref = getChannelPreference('telegram');
 
   return (
     <div className="min-h-screen bg-background">
@@ -95,22 +114,50 @@ const Settings = () => {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="font-medium">Enable Notifications</Label>
+              <Label className="font-medium">Enable Telegram Notifications</Label>
               <p className="text-sm text-muted-foreground">
-                Receive daily micro-task reminders
+                Receive daily lesson reminders via Telegram
               </p>
             </div>
             <Switch
-              checked={notificationSettings.enabled}
+              checked={telegramEnabled}
               onCheckedChange={handleToggleNotifications}
+              disabled={prefsLoading}
             />
+          </div>
+
+          {/* Telegram Status */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="font-medium flex items-center gap-2">
+                <Send className="h-4 w-4 text-blue-500" />
+                Telegram Status
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {telegramConnected ? (
+                  <span className="flex items-center gap-1 text-green-600">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Connected
+                  </span>
+                ) : (
+                  'Not connected'
+                )}
+              </p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setNotificationModalOpen(true)}
+            >
+              {telegramConnected ? 'Manage' : 'Connect'}
+            </Button>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="font-medium">Reminder Time</Label>
+              <Label className="font-medium">Delivery Time</Label>
               <p className="text-sm text-muted-foreground">
-                {notificationSettings.time || '08:00'}
+                {telegramPref?.delivery_time?.slice(0, 5) || '09:00'} ({telegramPref?.timezone || 'UTC'})
               </p>
             </div>
             <Button 
@@ -120,11 +167,6 @@ const Settings = () => {
             >
               Configure
             </Button>
-          </div>
-
-          <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            <strong className="text-primary">Note:</strong> Notification delivery requires 
-            a backend server. This is a frontend demo.
           </div>
         </section>
 
